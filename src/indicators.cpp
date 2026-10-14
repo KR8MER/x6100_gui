@@ -57,13 +57,10 @@ void indicators_init(lv_obj_t * parent, lv_coord_t h, lv_coord_t meter_w) {
     // Styles
     lv_style_init(&ind_style);
     lv_style_set_text_font(&ind_style, &sony_22);
-    lv_style_set_text_color(&ind_style, lv_color_hex(0x8A8A8A));
     lv_style_set_pad_hor(&ind_style, 5);
     lv_style_set_align(&ind_style, LV_ALIGN_CENTER);
 
     lv_style_init(&ind_style_active);
-    lv_style_set_text_color(&ind_style_active, lv_color_hex(0xFFFFFF));
-    lv_style_set_bg_color(&ind_style_active, lv_color_hex(0x12526F));
     lv_style_set_bg_opa(&ind_style_active, LV_OPA_COVER);
     lv_style_set_radius(&ind_style_active, 5);
     lv_style_set_pad_ver(&ind_style_active, 3);
@@ -75,7 +72,6 @@ void indicators_init(lv_obj_t * parent, lv_coord_t h, lv_coord_t meter_w) {
     lv_style_set_text_color(&atu_style_out_of_range, lv_color_hex(0xFF9F43));
 
     lv_style_init(&ind_sep_style);
-    lv_style_set_bg_color(&ind_sep_style, lv_color_hex(0x282828));
     lv_style_set_bg_opa(&ind_sep_style, LV_OPA_COVER);
     lv_style_set_width(&ind_sep_style, SEP_WIDTH);
     lv_style_set_height(&ind_sep_style, 26);
@@ -178,7 +174,9 @@ void indicators_show(bool v) {
 static lv_obj_t * create_item(lv_obj_t *parent, const char *label) {
     lv_obj_t *item = lv_label_create(parent);
     lv_obj_add_style(item, &ind_style, LV_STATE_DEFAULT);
+    lv_obj_add_style(item, &style.ind_text, LV_STATE_DEFAULT);
     lv_obj_add_style(item, &ind_style_active, LV_STATE_CHECKED);
+    lv_obj_add_style(item, &style.ind_active, LV_STATE_CHECKED);
     lv_label_set_text(item, label);
     return item;
 }
@@ -195,6 +193,7 @@ static lv_obj_t * create_sep(lv_obj_t *parent) {
     lv_obj_t *item = lv_obj_create(parent);
     lv_obj_remove_style_all(item);
     lv_obj_add_style(item, &ind_sep_style, LV_STATE_DEFAULT);
+    lv_obj_add_style(item, &style.ind_sep, LV_STATE_DEFAULT);
     return item;
 }
 

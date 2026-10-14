@@ -18,6 +18,7 @@
 #include "recorder.h"
 #include "rtty.h"
 #include "scheduler.h"
+#include "spectrum_glow.h"
 #include "styles.h"
 #include "util.h"
 
@@ -222,7 +223,7 @@ static void spectrum_overlay_draw_cb(lv_event_t *e) {
     if (param_i_get(cfg.ui.spectrum_use_custom_color())) {
         line_dsc.color.full = param_i_get(cfg.ui.spectrum_color());
     } else {
-        line_dsc.color = lv_color_hex(0xAAAAAA);
+        line_dsc.color = style.colors.ui.spectrum_center;
     }
     line_dsc.width = 1;
 
@@ -743,6 +744,8 @@ static void spectrum_draw_polyline(uint32_t *buf, int stride, float min, float m
 }
 
 static void spectrum_render_rotated(uint32_t *buf, int stride) {
+    static int16_t glow_top[SPECTRUM_NFFT];
+
     memset(buf, 0, (size_t)stride * SPECTRUM_NFFT * sizeof(uint32_t));
 
     float min = spectrum_min;
@@ -753,6 +756,23 @@ static void spectrum_render_rotated(uint32_t *buf, int stride) {
 
     spectrum_update_colors();
     int32_t offset = spectrum_compute_offset();
+
+    if (style.colors.ui.spectrum_glow_opa != LV_OPA_TRANSP) {
+        for (int row = 0; row < SPECTRUM_NFFT; row++) {
+            glow_top[row] = -1;
+        }
+        for (int i = 0; i < SPECTRUM_NFFT; i++) {
+            int row = SPECTRUM_NFFT - 1 - offset - i;
+            if (row < 0 || row >= SPECTRUM_NFFT) {
+                continue;
+            }
+            float v = (spectrum_buf[i] - min) / (max - min);
+            v = LV_CLAMP(0.0f, v, 1.0f);
+            glow_top[row] = (int16_t)((1.0f - v) * (stride - 1));
+        }
+        spectrum_glow_render(buf, stride, SPECTRUM_NFFT, glow_top, style.colors.ui.spectrum_glow,
+                             style.colors.ui.spectrum_glow_opa);
+    }
 
     if (param_i_get(cfg.ui.spectrum_peak()) && !spectrum_tx) {
         spectrum_draw_polyline(buf, stride, min, max, offset, true, s_peak_color);

@@ -43,6 +43,46 @@
 #define SYMBOL_NORTH_WEST_ARROW "\xE2\x86\x96"
 #define SYMBOL_SOUTH_WEST_ARROW "\xE2\x86\x99"
 
+/* Theme colours read by individual widgets (copied from the active skin) */
+typedef struct {
+    /* Spectrum: soft halo above the trace (alpha 0 = off) */
+    lv_color_t spectrum_glow;
+    lv_opa_t   spectrum_glow_opa;
+    lv_color_t spectrum_center;     // center and RTTY marker lines
+
+    lv_color_t freq_step_mark;      // underline of the tuning-step digit
+    lv_color_t tx_pwr;
+    lv_color_t swr_ok;
+    lv_color_t swr_ok_gray;
+    lv_color_t swr_warn;
+    lv_color_t swr_bad;
+
+    struct {
+        lv_color_t filter;
+        lv_color_t cursor;
+    } finder;
+
+    struct {
+        lv_color_t bg;
+        lv_color_t border;
+        lv_color_t text;
+        lv_color_t info;
+        lv_color_t cq_new;
+        lv_color_t cq_worked;
+        lv_color_t cq_worked_mode;
+        lv_color_t to_me;
+        lv_color_t tx;
+    } ft8;
+
+    struct {
+        lv_color_t grid;
+        lv_color_t label;
+        lv_color_t line;
+    } chart;
+
+    lv_color_t level;               // recorder level bar
+} ui_colors_t;
+
 typedef struct {
     lv_style_t waterfall_middle_line;
 
@@ -59,6 +99,14 @@ typedef struct {
     lv_style_t text_muted_color;
 
     lv_style_t freq_bounds;
+
+    /* Theme-coloured pieces of individual widgets */
+    lv_style_t badge_mode;      // mode label on the frequency block
+    lv_style_t badge_vfo;       // VFO label on the frequency block
+    lv_style_t bg_freq;         // the other VFO's frequency
+    lv_style_t ind_text;        // indicator row: idle
+    lv_style_t ind_active;      // indicator row: on
+    lv_style_t ind_sep;         // indicator row: group separator
 
     struct {
         lv_style_t base;
@@ -114,6 +162,8 @@ typedef struct {
         lv_color_t mark;
         lv_color_t wf_middle_line;
 
+        ui_colors_t ui;
+
     } colors;
 
     const uint32_t *wf_palette;
@@ -158,6 +208,10 @@ void styles_init(themes_t theme);
 void styles_set_theme(themes_t theme);
 
 void styles_update_meter_colors(meter_color_t mc);
+
+/* Top blocks follow TX: skins with TX artwork swap it in and flash once */
+void styles_set_tx(bool tx);
+void styles_tx_flash_add(lv_obj_t *obj);
 
 /* Resize the panel background: updates the shared panel style geometry and
  * re-renders the pre-computed gradient bitmap for the current skin. */

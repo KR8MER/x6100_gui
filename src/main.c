@@ -21,6 +21,7 @@
 #include "main.h"
 #include "main_screen.h"
 #include "styles.h"
+#include "splash.h"
 #include "radio.h"
 #include "dsp.h"
 #include "util.h"
@@ -157,6 +158,7 @@ int main(void) {
     audio_mixer_setup(x6100_control_get_base_ver());
     dsp_init();
     main_screen(overlay_scr);
+    splash_show();
 
     radio_start();
 

@@ -58,7 +58,6 @@ lv_obj_t * freq_info_init(lv_obj_t * parent) {
 
     lv_style_init(&bg_freq_style);
     lv_style_set_text_font(&bg_freq_style, &mono_22);
-    lv_style_set_text_color(&bg_freq_style, lv_color_hex(0xF9A851));
 
     lv_style_init(&locked_freq_style);
     lv_style_set_text_color(&locked_freq_style, lv_color_hex(0x969696));
@@ -66,6 +65,7 @@ lv_obj_t * freq_info_init(lv_obj_t * parent) {
     obj = lv_obj_create(parent);
     lv_obj_remove_style_all(obj);
     lv_obj_add_style(obj, &style.freq_info, LV_PART_MAIN);
+    styles_tx_flash_add(obj);
     lv_obj_set_style_pad_right(obj, 8, LV_PART_MAIN);
     lv_obj_set_style_pad_top(obj, 6, LV_PART_MAIN);
     lv_obj_set_style_pad_bottom(obj, 2, LV_PART_MAIN);
@@ -75,6 +75,7 @@ lv_obj_t * freq_info_init(lv_obj_t * parent) {
     bg_freq_label = lv_label_create(obj);
     lv_obj_set_align(bg_freq_label, LV_ALIGN_TOP_RIGHT);
     lv_obj_add_style(bg_freq_label, &bg_freq_style, LV_PART_MAIN);
+    lv_obj_add_style(bg_freq_label, &style.bg_freq, LV_PART_MAIN);
     lv_obj_add_style(bg_freq_label, &locked_freq_style, LV_STATE_DISABLED);
 
     /* Fg freq */
@@ -110,8 +111,7 @@ lv_obj_t * freq_info_init(lv_obj_t * parent) {
     vfo_label = lv_label_create(obj);
     lv_obj_add_style(vfo_label, &style.text_base_color, LV_PART_MAIN);
     lv_obj_align(vfo_label, LV_ALIGN_BOTTOM_LEFT, 5, -4);
-    lv_obj_set_style_bg_color(vfo_label, lv_color_hex(0xD32F2F), LV_PART_MAIN);
-    lv_obj_set_style_bg_opa(vfo_label, LV_OPA_70, LV_PART_MAIN);
+    lv_obj_add_style(vfo_label, &style.badge_vfo, LV_PART_MAIN);
     lv_obj_set_style_pad_hor(vfo_label, 5, LV_PART_MAIN);
     lv_obj_set_style_radius(vfo_label, 5, LV_PART_MAIN);
     lv_obj_set_style_text_font(vfo_label, &sony_32, LV_PART_MAIN);
@@ -120,8 +120,7 @@ lv_obj_t * freq_info_init(lv_obj_t * parent) {
     mode_label = lv_label_create(obj);
     lv_obj_add_style(mode_label, &style.text_base_color, LV_PART_MAIN);
     lv_obj_align(mode_label, LV_ALIGN_TOP_LEFT, 5, -2);
-    lv_obj_set_style_bg_color(mode_label, lv_color_hex(0x4CAF50), LV_PART_MAIN);
-    lv_obj_set_style_bg_opa(mode_label, LV_OPA_70, LV_PART_MAIN);
+    lv_obj_add_style(mode_label, &style.badge_mode, LV_PART_MAIN);
     lv_obj_set_style_pad_hor(mode_label, 3, LV_PART_MAIN);
     lv_obj_set_style_radius(mode_label, 3, LV_PART_MAIN);
     lv_obj_set_style_text_font(mode_label, &sony_28, LV_PART_MAIN);
@@ -279,7 +278,7 @@ static void fg_freq_post_draw_event_cb(lv_event_t *e) {
 
     lv_draw_line_dsc_t draw_dsc;
     lv_draw_line_dsc_init(&draw_dsc);
-    draw_dsc.color = lv_color_hex(0x4CAF50);
+    draw_dsc.color = style.colors.ui.freq_step_mark;
     draw_dsc.width = 3;
     draw_dsc.round_start = 0;
     draw_dsc.round_end = 0;

@@ -162,6 +162,7 @@ lv_obj_t * clock_init(lv_obj_t * parent) {
     lv_obj_t * container = lv_obj_create(parent);
     lv_obj_remove_style_all(container);
     lv_obj_add_style(container, &style.clock, 0);
+    styles_tx_flash_add(container);
 
     obj = lv_label_create(container);
     lv_obj_remove_style_all(obj);

@@ -341,7 +341,7 @@ static void construct_cb(lv_obj_t *parent) {
     static lv_style_t style_level_indic;
 
     lv_style_init(&style_level_bg);
-    lv_style_set_border_color(&style_level_bg, lv_palette_main(LV_PALETTE_BLUE));
+    lv_style_set_border_color(&style_level_bg, style.colors.ui.level);
     lv_style_set_border_width(&style_level_bg, 2);
     lv_style_set_pad_all(&style_level_bg, 6); /*To make the indicator smaller*/
     lv_style_set_radius(&style_level_bg, 6);
@@ -349,7 +349,7 @@ static void construct_cb(lv_obj_t *parent) {
 
     lv_style_init(&style_level_indic);
     lv_style_set_bg_opa(&style_level_indic, LV_OPA_COVER);
-    lv_style_set_bg_color(&style_level_indic, lv_palette_main(LV_PALETTE_BLUE));
+    lv_style_set_bg_color(&style_level_indic, style.colors.ui.level);
     lv_style_set_radius(&style_level_indic, 3);
 
     level = lv_bar_create(dialog.obj);

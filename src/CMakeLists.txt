@@ -15,7 +15,7 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE _GNU_SOURCE)
 
 target_sources(${PROJECT_NAME} PUBLIC
     main.c main_screen.c
-    styles.c spectrum.c radio.c dsp.cpp util.cpp
+    styles.c splash.c spectrum.c spectrum_glow.c radio.c dsp.cpp util.cpp
     app_ports.cpp
     waterfall.c rotary.cpp keyboard.c kbd_rollover.c encoder.c
     events.c msg.c msg_tiny.c keypad.c

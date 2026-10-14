@@ -421,7 +421,7 @@ class SettingsManager {
         StorageType::GLOBAL, pending_writes_, {}, &global_params_};
 
     // Appearance
-    Parameter<int32_t> p_theme{"theme", THEME_SIMPLE, {},
+    Parameter<int32_t> p_theme{"theme", THEME_LIGHTNING, {},
         StorageType::GLOBAL, pending_writes_, {}, &global_params_};
     Parameter<int32_t> p_meter_color{"meter_color", METER_GRAY, {},
         StorageType::GLOBAL, pending_writes_, {}, &global_params_};

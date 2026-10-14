@@ -2,6 +2,7 @@
 
 extern "C" {
 #include "../main.h"
+#include "../splash.h"
 #include "../radio.h"
 }
 
@@ -23,5 +24,9 @@ void make_info_page(SettingsPage &page) {
 
     lv_obj_t *label = lv_label_create(grid);
     lv_obj_set_style_text_line_space(label, 20, LV_PART_MAIN);
-    lv_label_set_text_fmt(label, "App version: %s\nBASE version: %s", VERSION, x6100_control_get_fw_version_str());
+    lv_label_set_text_fmt(label,
+                          "%s %s\n"
+                          "App version: %s\nBASE version: %s\n"
+                          "Built on the X6100 GUI by R1CBU and OpenX6100",
+                          BRAND_CALL, BRAND_EDITION, VERSION, x6100_control_get_fw_version_str());
 }

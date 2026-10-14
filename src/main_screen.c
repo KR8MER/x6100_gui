@@ -56,6 +56,7 @@
 #include "indicators.h"
 #include "freq_info.h"
 #include "lock_manager.h"
+#include "splash.h"
 
 #include <unistd.h>
 #include <stdint.h>
@@ -841,6 +842,7 @@ static void main_screen_hkey_cb(lv_event_t * e) {
 }
 
 static void rx_cb(void * s, lv_msg_t * msg) {
+    styles_set_tx(false);
     if (!dialog_running) {
         indicators_left_show(true);
     }
@@ -850,6 +852,7 @@ static void rx_cb(void * s, lv_msg_t * msg) {
 }
 
 static void tx_cb(void * s, lv_msg_t * msg) {
+    styles_set_tx(true);
     indicators_left_show(false);
     if (dialog_running) {
         lv_obj_move_foreground(top_container);
@@ -1181,7 +1184,7 @@ lv_obj_t * main_screen(lv_obj_t *overlay_scr) {
     /* CW tune */
     cw_tune_init(spectrum);
 
-    msg_schedule_text_fmt("X6100 de R1CBU es Others " VERSION);
+    msg_schedule_text_fmt(BRAND_CALL " " BRAND_EDITION " " VERSION);
 
     subject_subscribe_delayed_and_notify((Subject*)radio_fg_freq_subj, on_fg_freq_change, NULL);
 

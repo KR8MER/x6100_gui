@@ -110,18 +110,24 @@ static void on_dialog_stop(void *s, lv_msg_t *msg) {
 
 static lv_color_t swr_bar_color_cb(float val) {
     if (val <= 2.0f) {
-        return param_i_get(cfg.ui.swr_color()) == SWR_GRAY ? lv_color_hex(0xAAAAAA) : lv_color_hex(0x00CC00);
+        return param_i_get(cfg.ui.swr_color()) == SWR_GRAY ? style.colors.ui.swr_ok_gray : style.colors.ui.swr_ok;
     } else if (val <= 3.0f) {
-        return lv_color_hex(0xAAAA00);
+        return style.colors.ui.swr_warn;
     } else {
-        return lv_color_hex(0xAA0000);
+        return style.colors.ui.swr_bad;
     }
+}
+
+static lv_color_t pwr_bar_color_cb(float val) {
+    (void)val;
+    return style.colors.ui.tx_pwr;
 }
 
 lv_obj_t *tx_info_init(lv_obj_t *parent) {
     obj = lv_obj_create(parent);
     lv_obj_remove_style_all(obj);
     lv_obj_add_style(obj, &style.tx_info, 0);
+    styles_tx_flash_add(obj);
     lv_obj_set_scrollbar_mode(obj, LV_SCROLLBAR_MODE_OFF);
 
     // Use pad to align
@@ -138,7 +144,8 @@ lv_obj_t *tx_info_init(lv_obj_t *parent) {
     lv_obj_set_size(pwr_bar, w, (h - pad) / 2);
     lv_bar_indicator_set_range(pwr_bar, min_pwr, max_pwr, 0.25f);
     lv_bar_indicator_set_ticks(pwr_bar, pwr_ticks, ARRAY_SIZE(pwr_ticks));
-    lv_bar_indicator_set_default_color(pwr_bar, lv_color_hex(0xAAAAAA));
+    lv_bar_indicator_set_default_color(pwr_bar, style.colors.ui.tx_pwr);
+    lv_bar_indicator_set_color_cb(pwr_bar, pwr_bar_color_cb);
 
     lv_bar_indicator_set_font(pwr_bar, &sony_22);
 
@@ -151,7 +158,7 @@ lv_obj_t *tx_info_init(lv_obj_t *parent) {
     lv_bar_indicator_set_font(swr_bar, &sony_22);
     lv_obj_set_y(swr_bar, (h + pad) / 2);
 
-    lv_bar_indicator_set_default_color(swr_bar, lv_color_hex(0xAA0000));
+    lv_bar_indicator_set_default_color(swr_bar, style.colors.ui.swr_bad);
     lv_bar_indicator_set_color_cb(swr_bar, swr_bar_color_cb);
 
     // Small alc label

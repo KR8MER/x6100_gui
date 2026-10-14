@@ -13,6 +13,7 @@
 #include <string.h>
 
 #include "../events.h"
+#include "../styles.h"
 
 /*
  *  Cell data is owned by a fixed-size ring pool. We do NOT use LVGL's
@@ -179,38 +180,38 @@ static void draw_part_begin_cb(lv_event_t *e) {
 
     if (!cd) {
         dsc->label_dsc->align = LV_TEXT_ALIGN_CENTER;
-        dsc->rect_dsc->bg_color = lv_color_hex(0x303030);
+        dsc->rect_dsc->bg_color = style.colors.ui.ft8.info;
     } else {
         switch (cd->cell_type) {
         case CELL_START_QSO:
         case CELL_RX_INFO:
             dsc->label_dsc->align = LV_TEXT_ALIGN_CENTER;
-            dsc->rect_dsc->bg_color = lv_color_hex(0x303030);
+            dsc->rect_dsc->bg_color = style.colors.ui.ft8.info;
             break;
         case CELL_RX_CQ:
             switch (cd->worked_type) {
             case SEARCH_WORKED_NO:
-                dsc->rect_dsc->bg_color = lv_color_hex(0x00DD00);
+                dsc->rect_dsc->bg_color = style.colors.ui.ft8.cq_new;
                 break;
             case SEARCH_WORKED_YES:
                 dsc->label_dsc->opa = LV_OPA_90;
-                dsc->rect_dsc->bg_color = lv_color_hex(0x2e5a00);
+                dsc->rect_dsc->bg_color = style.colors.ui.ft8.cq_worked;
                 break;
             case SEARCH_WORKED_SAME_MODE:
                 dsc->label_dsc->decor = LV_TEXT_DECOR_STRIKETHROUGH;
                 dsc->label_dsc->opa   = LV_OPA_80;
-                dsc->rect_dsc->bg_color = lv_color_hex(0x224400);
+                dsc->rect_dsc->bg_color = style.colors.ui.ft8.cq_worked_mode;
                 break;
             }
             break;
         case CELL_RX_TO_ME:
-            dsc->rect_dsc->bg_color = lv_color_hex(0xFF0000);
+            dsc->rect_dsc->bg_color = style.colors.ui.ft8.to_me;
             break;
         case CELL_TX_MSG:
-            dsc->rect_dsc->bg_color = lv_color_hex(0x0000FF);
+            dsc->rect_dsc->bg_color = style.colors.ui.ft8.tx;
             break;
         default:
-            dsc->rect_dsc->bg_color = lv_color_black();
+            dsc->rect_dsc->bg_color = style.colors.ui.ft8.bg;
             break;
         }
     }
@@ -360,11 +361,11 @@ void table_view_build(lv_obj_t *parent, lv_coord_t x, lv_coord_t y, lv_coord_t w
 
     lv_obj_set_style_border_width(s_table, 0, LV_PART_ITEMS);
     lv_obj_set_style_bg_opa(s_table, 192, LV_PART_MAIN);
-    lv_obj_set_style_bg_color(s_table, lv_color_black(), LV_PART_MAIN);
+    lv_obj_set_style_bg_color(s_table, style.colors.ui.ft8.bg, LV_PART_MAIN);
     lv_obj_set_style_border_width(s_table, 1, LV_PART_MAIN);
-    lv_obj_set_style_border_color(s_table, lv_color_white(), LV_PART_MAIN);
+    lv_obj_set_style_border_color(s_table, style.colors.ui.ft8.border, LV_PART_MAIN);
     lv_obj_set_style_border_opa(s_table, 128, LV_PART_MAIN);
-    lv_obj_set_style_text_color(s_table, lv_color_hex(0xC0C0C0), LV_PART_ITEMS);
+    lv_obj_set_style_text_color(s_table, style.colors.ui.ft8.text, LV_PART_ITEMS);
     lv_obj_set_style_pad_top(s_table, 3, LV_PART_ITEMS);
     lv_obj_set_style_pad_bottom(s_table, 3, LV_PART_ITEMS);
     lv_obj_set_style_pad_left(s_table, 5, LV_PART_ITEMS);

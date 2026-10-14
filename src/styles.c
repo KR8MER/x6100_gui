@@ -45,6 +45,31 @@ typedef struct {
     lv_color_t focus_bg_color;
     lv_color_t edited_bg_color;
 
+    ui_colors_t ui;
+
+    // Widget chrome: badges, readouts and the indicator row
+    struct {
+        lv_color_t mode_bg;
+        lv_color_t mode_text;
+        lv_color_t vfo_bg;
+        lv_color_t vfo_text;
+        lv_opa_t   badge_opa;
+        lv_color_t bg_freq;
+        lv_color_t ind_text;
+        lv_color_t ind_active_bg;
+        lv_color_t ind_active_text;
+        lv_color_t ind_sep;
+        lv_color_t readout_bg;
+    } chrome;
+
+    // Top blocks while transmitting. NULL images: no change on TX.
+    struct {
+        void      *clock;
+        void      *freq_info;
+        void      *tx_info;
+        lv_color_t flash;
+    } tx;
+
     struct {
         lv_color_t noise;
         lv_color_t low;
@@ -98,6 +123,9 @@ static skin_t skin_lightning;
 static skin_t *skin_current;
 
 static lv_img_dsc_t panel_bg_dsc;
+
+static bool      tx_active;
+static lv_obj_t *tx_targets[3];   // top blocks that flash on key-down
 static lv_coord_t   panel_bg_w = DIALOG_WIDTH;
 static lv_coord_t   panel_bg_h = 182;
 
@@ -108,6 +136,7 @@ static void setup_skin_black(skin_t *skin);
 static void setup_skin_lightning(skin_t *skin);
 
 static void set_skin(skin_t *skin);
+static void apply_tx_art(skin_t *skin);
 
 static void render_panel_bg(skin_t *skin, lv_coord_t w, lv_coord_t h);
 
@@ -127,6 +156,13 @@ void styles_init(themes_t theme) {
     lv_style_set_bg_color(&style.freq_bounds, lv_color_black());
     lv_style_set_bg_opa(&style.freq_bounds, LV_OPA_40);
     lv_style_set_radius(&style.freq_bounds, 5);
+
+    lv_style_init(&style.badge_mode);
+    lv_style_init(&style.badge_vfo);
+    lv_style_init(&style.bg_freq);
+    lv_style_init(&style.ind_text);
+    lv_style_init(&style.ind_active);
+    lv_style_init(&style.ind_sep);
 
     /* Buttons */
     lv_style_init(&style.btn.base);
@@ -561,6 +597,48 @@ static void setup_skin_default(skin_t *skin) {
     skin->focus_border_color = lv_color_white();
     skin->focus_fill         = false;
 
+    skin->ui.spectrum_glow       = lv_color_black();
+    skin->ui.spectrum_glow_opa   = LV_OPA_TRANSP;
+    skin->ui.spectrum_center     = lv_color_hex(0xAAAAAA);
+    skin->ui.freq_step_mark      = lv_color_hex(0x4CAF50);
+    skin->ui.tx_pwr              = lv_color_hex(0xAAAAAA);
+    skin->ui.swr_ok              = lv_color_hex(0x00CC00);
+    skin->ui.swr_ok_gray         = lv_color_hex(0xAAAAAA);
+    skin->ui.swr_warn            = lv_color_hex(0xAAAA00);
+    skin->ui.swr_bad             = lv_color_hex(0xAA0000);
+    skin->ui.finder.filter       = lv_color_hex(0xFF5050);
+    skin->ui.finder.cursor       = lv_color_hex(0x50FF50);
+    skin->ui.ft8.bg              = lv_color_black();
+    skin->ui.ft8.border          = lv_color_white();
+    skin->ui.ft8.text            = lv_color_hex(0xC0C0C0);
+    skin->ui.ft8.info            = lv_color_hex(0x303030);
+    skin->ui.ft8.cq_new          = lv_color_hex(0x00DD00);
+    skin->ui.ft8.cq_worked       = lv_color_hex(0x2e5a00);
+    skin->ui.ft8.cq_worked_mode  = lv_color_hex(0x224400);
+    skin->ui.ft8.to_me           = lv_color_hex(0xFF0000);
+    skin->ui.ft8.tx              = lv_color_hex(0x0000FF);
+    skin->ui.chart.grid          = lv_color_hex(0xAAAAAA);
+    skin->ui.chart.label         = lv_color_white();
+    skin->ui.chart.line          = lv_color_white();
+    skin->ui.level               = lv_palette_main(LV_PALETTE_BLUE);
+
+    skin->chrome.mode_bg         = lv_color_hex(0x4CAF50);
+    skin->chrome.mode_text       = skin->base_text_color;
+    skin->chrome.vfo_bg          = lv_color_hex(0xD32F2F);
+    skin->chrome.vfo_text        = skin->base_text_color;
+    skin->chrome.badge_opa       = LV_OPA_70;
+    skin->chrome.bg_freq         = lv_color_hex(0xF9A851);
+    skin->chrome.ind_text        = lv_color_hex(0x8A8A8A);
+    skin->chrome.ind_active_bg   = lv_color_hex(0x12526F);
+    skin->chrome.ind_active_text = lv_color_hex(0xFFFFFF);
+    skin->chrome.ind_sep         = lv_color_hex(0x282828);
+    skin->chrome.readout_bg      = lv_color_black();
+
+    skin->tx.clock     = NULL;
+    skin->tx.freq_info = NULL;
+    skin->tx.tx_info   = NULL;
+    skin->tx.flash     = lv_color_black();
+
     skin->s_meter.noise = lv_color_hex(0x777777);
     skin->s_meter.low   = lv_color_hex(0xAAAAAA);
     skin->s_meter.mid   = lv_color_hex(0xAAAA00);
@@ -939,6 +1017,9 @@ static void setup_skin_lightning(skin_t *skin) {
     static lv_img_dsc_t s_meter_bg_dsc;
     static lv_img_dsc_t tx_info_bg_dsc;
     static lv_img_dsc_t dialog_bg_dsc;
+    static lv_img_dsc_t clock_tx_dsc;
+    static lv_img_dsc_t freq_info_tx_dsc;
+    static lv_img_dsc_t tx_info_tx_dsc;
 
     // Copy default and override
     *skin = skin_default;
@@ -971,6 +1052,46 @@ static void setup_skin_lightning(skin_t *skin) {
     skin->s_meter.mid   = bolt;
     skin->s_meter.high  = lv_color_hex(0xff5252);
     skin->s_meter.peak  = lv_color_hex(0xfff176);
+
+    lv_color_t ink   = lv_color_hex(0x0d1b2a);   // dark text on bright fills
+    lv_color_t alarm = lv_color_hex(0xff5252);
+
+    skin->ui.spectrum_glow      = bolt;
+    skin->ui.spectrum_glow_opa  = LV_OPA_30;
+    skin->ui.spectrum_center    = lv_color_hex(0xfff176);
+    skin->ui.freq_step_mark     = bolt;
+    skin->ui.tx_pwr             = spark;
+    skin->ui.swr_ok             = lv_color_hex(0x00e676);
+    skin->ui.swr_ok_gray        = spark;
+    skin->ui.swr_warn           = bolt;
+    skin->ui.swr_bad            = alarm;
+    skin->ui.finder.filter      = bolt;
+    skin->ui.finder.cursor      = spark;
+    skin->ui.ft8.bg             = night;
+    skin->ui.ft8.border         = haze;
+    skin->ui.ft8.text           = lv_color_hex(0xeef4ff);
+    skin->ui.ft8.info           = storm;
+    skin->ui.ft8.cq_new         = lv_color_hex(0x00c853);
+    skin->ui.ft8.cq_worked      = lv_color_hex(0x1b5e20);
+    skin->ui.ft8.cq_worked_mode = lv_color_hex(0x123d17);
+    skin->ui.ft8.to_me          = lv_color_hex(0xd50000);
+    skin->ui.ft8.tx             = lv_color_hex(0x0091ea);
+    skin->ui.chart.grid         = haze;
+    skin->ui.chart.label        = lv_color_hex(0xeef4ff);
+    skin->ui.chart.line         = bolt;
+    skin->ui.level              = spark;
+
+    skin->chrome.mode_bg         = spark;
+    skin->chrome.mode_text       = ink;
+    skin->chrome.vfo_bg          = bolt;
+    skin->chrome.vfo_text        = ink;
+    skin->chrome.badge_opa       = LV_OPA_COVER;
+    skin->chrome.bg_freq         = lv_color_hex(0x80d8ff);
+    skin->chrome.ind_text        = lv_color_hex(0x8fa3c8);
+    skin->chrome.ind_active_bg   = spark;
+    skin->chrome.ind_active_text = ink;
+    skin->chrome.ind_sep         = lv_color_hex(0x24365f);
+    skin->chrome.readout_bg      = deep;
 
     lv_coord_t w, h;
     lv_coord_t border_width = 2;
@@ -1048,6 +1169,36 @@ static void setup_skin_lightning(skin_t *skin) {
     } else {
         LV_LOG_ERROR("Unknown tx_info style size");
         skin->bg_img.tx_info = NULL;
+    }
+
+    /* On the air: the same blocks with a red-hot edge */
+    lv_grad_dsc_t tx_border_grad = {
+        .dir         = LV_GRAD_DIR_VER,
+        .stops_count = 3,
+        .stops       = {
+                        [0] = {.color = alarm, .frac = 0},
+                        [1] = {.color = lv_color_hex(0xb71c1c), .frac = 110},
+                        [2] = {.color = lv_color_hex(0x4a1020), .frac = 255},
+                        }
+    };
+    lv_grad_dsc_t tx_bg_grad = top_bg_grad;
+    tx_bg_grad.stops[0].color = lv_color_hex(0x3a1c3e);
+    skin->tx.flash = alarm;
+
+    if (style_get_size(&style.clock, &w, &h)) {
+        render_grad_bg_with_border(w, h, &clock_tx_dsc, top_block_opa, border_width, radius, &tx_bg_grad,
+                                   &tx_border_grad);
+        skin->tx.clock = &clock_tx_dsc;
+    }
+    if (style_get_size(&style.freq_info, &w, &h)) {
+        render_grad_bg_with_border(w, h, &freq_info_tx_dsc, top_block_opa, border_width, radius, &tx_bg_grad,
+                                   &tx_border_grad);
+        skin->tx.freq_info = &freq_info_tx_dsc;
+    }
+    if (style_get_size(&style.tx_info, &w, &h)) {
+        render_grad_bg_with_border(w, h, &tx_info_tx_dsc, LV_OPA_COVER, border_width, radius, &tx_bg_grad,
+                                   &tx_border_grad);
+        skin->tx.tx_info = &tx_info_tx_dsc;
     }
 
     /* Frequency gets the yellow bolt: it's the headline number */
@@ -1208,5 +1359,82 @@ static void set_skin(skin_t *skin) {
     lv_style_set_bg_opa(&style.clock, skin->bg_color.clock.ch.alpha);
     lv_style_set_bg_color(&style.clock, skin->bg_color.clock);
 
+    /* Widget colours */
+    style.colors.ui = skin->ui;
+
+    lv_style_set_bg_color(&style.badge_mode, skin->chrome.mode_bg);
+    lv_style_set_bg_opa(&style.badge_mode, skin->chrome.badge_opa);
+    lv_style_set_text_color(&style.badge_mode, skin->chrome.mode_text);
+    lv_style_set_bg_color(&style.badge_vfo, skin->chrome.vfo_bg);
+    lv_style_set_bg_opa(&style.badge_vfo, skin->chrome.badge_opa);
+    lv_style_set_text_color(&style.badge_vfo, skin->chrome.vfo_text);
+    lv_style_set_text_color(&style.bg_freq, skin->chrome.bg_freq);
+    lv_style_set_text_color(&style.ind_text, skin->chrome.ind_text);
+    lv_style_set_bg_color(&style.ind_active, skin->chrome.ind_active_bg);
+    lv_style_set_text_color(&style.ind_active, skin->chrome.ind_active_text);
+    lv_style_set_bg_color(&style.ind_sep, skin->chrome.ind_sep);
+    lv_style_set_bg_color(&style.knobs, skin->chrome.readout_bg);
+    lv_style_set_bg_color(&style.freq_bounds, skin->chrome.readout_bg);
+
+    apply_tx_art(skin);
+
+    lv_obj_report_style_change(NULL);
     lv_obj_invalidate(lv_scr_act());
+}
+
+/* Top-block artwork for the current TX state */
+static void apply_tx_art(skin_t *skin) {
+    bool tx = tx_active && skin->tx.clock;
+
+    lv_style_set_bg_img_src(&style.clock, tx ? skin->tx.clock : skin->bg_img.clock);
+    lv_style_set_bg_img_src(&style.freq_info, tx ? skin->tx.freq_info : skin->bg_img.freq_info);
+    lv_style_set_bg_img_src(&style.tx_info, tx ? skin->tx.tx_info : skin->bg_img.tx_info);
+}
+
+static void tx_flash_cb(void *obj, int32_t v) {
+    lv_obj_set_style_bg_img_recolor_opa(obj, (lv_opa_t)v, LV_PART_MAIN);
+}
+
+void styles_tx_flash_add(lv_obj_t *obj) {
+    for (int i = 0; i < 3; i++) {
+        if (!tx_targets[i]) {
+            tx_targets[i] = obj;
+            return;
+        }
+    }
+    LV_LOG_WARN("No room for another TX flash target");
+}
+
+void styles_set_tx(bool tx) {
+    tx_active = tx;
+
+    if (!skin_current || !skin_current->tx.clock) {
+        return;
+    }
+    apply_tx_art(skin_current);
+    lv_obj_report_style_change(&style.clock);
+    lv_obj_report_style_change(&style.freq_info);
+    lv_obj_report_style_change(&style.tx_info);
+
+    /* Key-down: one bright flash that fades out */
+    for (int i = 0; i < 3; i++) {
+        lv_obj_t *obj = tx_targets[i];
+        if (!obj) {
+            continue;
+        }
+        lv_anim_del(obj, tx_flash_cb);
+        lv_obj_set_style_bg_img_recolor(obj, skin_current->tx.flash, LV_PART_MAIN);
+        if (tx) {
+            lv_anim_t a;
+            lv_anim_init(&a);
+            lv_anim_set_var(&a, obj);
+            lv_anim_set_exec_cb(&a, tx_flash_cb);
+            lv_anim_set_values(&a, LV_OPA_50, LV_OPA_TRANSP);
+            lv_anim_set_time(&a, 450);
+            lv_anim_set_path_cb(&a, lv_anim_path_ease_out);
+            lv_anim_start(&a);
+        } else {
+            tx_flash_cb(obj, LV_OPA_TRANSP);
+        }
+    }
 }
