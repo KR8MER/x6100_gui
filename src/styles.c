@@ -22,6 +22,10 @@ const uint32_t wf_palette_gauss[] = {
 #include "palettes/gauss.inc"
 };
 
+const uint32_t wf_palette_lightning[] = {
+#include "palettes/lightning.inc"
+};
+
 /* Skin API */
 typedef struct {
     const uint32_t *wf_palette;
@@ -31,6 +35,15 @@ typedef struct {
 
     lv_color_t wf_middle_line_color;
     lv_coord_t wf_middle_line_min_width;
+
+    // Highlight for checked buttons and the focused dialog item
+    lv_color_t accent_color;
+    lv_opa_t   accent_opa;
+    lv_color_t focus_border_color;
+    // Fill for the focused/edited dialog item (otherwise the widget's own bg shows through)
+    bool       focus_fill;
+    lv_color_t focus_bg_color;
+    lv_color_t edited_bg_color;
 
     struct {
         lv_color_t noise;
@@ -80,6 +93,7 @@ static uint32_t rng_state=1;
 static skin_t skin_default;
 static skin_t skin_flat;
 static skin_t skin_black;
+static skin_t skin_lightning;
 
 static skin_t *skin_current;
 
@@ -91,6 +105,7 @@ static lv_coord_t   panel_bg_h = 182;
 static void setup_skin_default(skin_t *skin);
 static void setup_skin_flat(skin_t *skin);
 static void setup_skin_black(skin_t *skin);
+static void setup_skin_lightning(skin_t *skin);
 
 static void set_skin(skin_t *skin);
 
@@ -123,8 +138,6 @@ void styles_init(themes_t theme) {
     lv_style_set_height(&style.btn.base, BTN_HEIGHT);
 
     lv_style_init(&style.btn.active);
-    lv_style_set_bg_img_recolor(&style.btn.active, lv_color_hex(0x00FF00));
-    lv_style_set_bg_img_recolor_opa(&style.btn.active, LV_OPA_20);
 
     lv_style_init(&style.btn.disabled);
     lv_style_set_bg_img_recolor(&style.btn.disabled, lv_color_hex(0x000000));
@@ -199,9 +212,7 @@ void styles_init(themes_t theme) {
     lv_style_set_bg_opa(&style.dialog.item, LV_OPA_TRANSP);
 
     lv_style_init(&style.dialog.item_focus);
-    lv_style_set_bg_opa(&style.dialog.item_focus, 128);
     lv_style_set_text_color(&style.dialog.item_focus, lv_color_black());
-    lv_style_set_border_color(&style.dialog.item_focus, lv_color_white());
     lv_style_set_border_width(&style.dialog.item_focus, 2);
 
     lv_style_init(&style.dialog.item_edited);
@@ -318,6 +329,7 @@ void styles_init(themes_t theme) {
     setup_skin_default(&skin_default);
     setup_skin_flat(&skin_flat);
     setup_skin_black(&skin_black);
+    setup_skin_lightning(&skin_lightning);
 
     styles_set_theme(theme);
 
@@ -349,6 +361,9 @@ void styles_set_theme(themes_t theme) {
             break;
         case THEME_FLAT:
             skin_current = &skin_flat;
+            break;
+        case THEME_LIGHTNING:
+            skin_current = &skin_lightning;
             break;
         case THEME_SIMPLE:
         default:
@@ -540,6 +555,11 @@ static void setup_skin_default(skin_t *skin) {
 
     skin->wf_middle_line_color     = lv_color_hex(0xAAAAAA);
     skin->wf_middle_line_min_width = 2;
+
+    skin->accent_color = lv_color_hex(0x00FF00);
+    skin->accent_opa   = LV_OPA_20;
+    skin->focus_border_color = lv_color_white();
+    skin->focus_fill         = false;
 
     skin->s_meter.noise = lv_color_hex(0x777777);
     skin->s_meter.low   = lv_color_hex(0xAAAAAA);
@@ -906,6 +926,211 @@ static void setup_skin_black(skin_t *skin) {
     // skin->bg_img.dialog = PATH "images/dialog_black.bin";
 }
 
+/*
+ * Lightning: storm-cloud navy surfaces with electric-yellow and cyan edges,
+ * after the EAS Station "Lightning" web theme.
+ */
+static void setup_skin_lightning(skin_t *skin) {
+    static lv_img_dsc_t btn_bg_dsc;
+    static lv_img_dsc_t msg_bg_dsc;
+    static lv_img_dsc_t msg_tiny_bg_dsc;
+    static lv_img_dsc_t clock_bg_dsc;
+    static lv_img_dsc_t freq_info_bg_dsc;
+    static lv_img_dsc_t s_meter_bg_dsc;
+    static lv_img_dsc_t tx_info_bg_dsc;
+    static lv_img_dsc_t dialog_bg_dsc;
+
+    // Copy default and override
+    *skin = skin_default;
+
+    lv_color_t night   = lv_color_hex(0x060d1f);
+    lv_color_t deep    = lv_color_hex(0x0d1b2a);
+    lv_color_t storm   = lv_color_hex(0x14224d);
+    lv_color_t cloud   = lv_color_hex(0x1c2e5e);
+    lv_color_t haze    = lv_color_hex(0x5973a8);
+    lv_color_t bolt    = lv_color_hex(0xffeb3b);
+    lv_color_t spark   = lv_color_hex(0x40c4ff);
+
+    skin->wf_palette      = wf_palette_lightning;
+    skin->base_text_color = lv_color_white();
+    skin->spectrum_color  = bolt;
+    skin->mark_color      = lv_color_hex(0x24407a);
+
+    skin->wf_middle_line_color     = bolt;
+    skin->wf_middle_line_min_width = 2;
+
+    skin->accent_color       = spark;
+    skin->accent_opa         = LV_OPA_40;
+    skin->focus_border_color = bolt;
+    skin->focus_fill         = true;
+    skin->focus_bg_color     = bolt;
+    skin->edited_bg_color    = lv_color_hex(0xfff176);
+
+    skin->s_meter.noise = haze;
+    skin->s_meter.low   = spark;
+    skin->s_meter.mid   = bolt;
+    skin->s_meter.high  = lv_color_hex(0xff5252);
+    skin->s_meter.peak  = lv_color_hex(0xfff176);
+
+    lv_coord_t w, h;
+    lv_coord_t border_width = 2;
+    lv_coord_t radius       = 10;
+
+    /* Buttons: bolt-lit top edge fading into the storm */
+    lv_grad_dsc_t btn_bg_grad = {
+        .dir         = LV_GRAD_DIR_VER,
+        .stops_count = 2,
+        .stops       = {
+                        [0] = {.color = cloud, .frac = 0},
+                        [1] = {.color = deep, .frac = 255},
+                        }
+    };
+    lv_grad_dsc_t btn_border_grad = {
+        .dir         = LV_GRAD_DIR_VER,
+        .stops_count = 3,
+        .stops       = {
+                        [0] = {.color = bolt, .frac = 0},
+                        [1] = {.color = haze, .frac = 70},
+                        [2] = {.color = storm, .frac = 255},
+                        }
+    };
+    if (style_get_size(&style.btn.base, &w, &h)) {
+        render_grad_bg_with_border(w, h, &btn_bg_dsc, LV_OPA_90, border_width, radius, &btn_bg_grad,
+                                   &btn_border_grad);
+        skin->bg_img.btn = &btn_bg_dsc;
+    } else {
+        LV_LOG_ERROR("Unknown btn style size");
+        skin->bg_img.btn = NULL;
+    }
+
+    /* Top blocks: cyan spark along the top edge */
+    lv_grad_dsc_t top_bg_grad = {
+        .dir         = LV_GRAD_DIR_VER,
+        .stops_count = 2,
+        .stops       = {
+                        [0] = {.color = cloud, .frac = 0},
+                        [1] = {.color = night, .frac = 255},
+                        }
+    };
+    lv_grad_dsc_t top_border_grad = {
+        .dir         = LV_GRAD_DIR_VER,
+        .stops_count = 3,
+        .stops       = {
+                        [0] = {.color = spark, .frac = 0},
+                        [1] = {.color = haze, .frac = 90},
+                        [2] = {.color = storm, .frac = 255},
+                        }
+    };
+    lv_opa_t top_block_opa = LV_OPA_80;
+
+    if (style_get_size(&style.clock, &w, &h)) {
+        render_grad_bg_with_border(w, h, &clock_bg_dsc, top_block_opa, border_width, radius, &top_bg_grad,
+                                   &top_border_grad);
+        skin->bg_img.clock = &clock_bg_dsc;
+    } else {
+        LV_LOG_ERROR("Unknown clock style size");
+        skin->bg_img.clock = NULL;
+    }
+
+    if (style_get_size(&style.s_meter, &w, &h)) {
+        render_grad_bg_with_border(w, h, &s_meter_bg_dsc, top_block_opa, border_width, radius, &top_bg_grad,
+                                   &top_border_grad);
+        skin->bg_img.s_meter = &s_meter_bg_dsc;
+    } else {
+        LV_LOG_ERROR("Unknown s_meter style size");
+        skin->bg_img.s_meter = NULL;
+    }
+
+    if (style_get_size(&style.tx_info, &w, &h)) {
+        render_grad_bg_with_border(w, h, &tx_info_bg_dsc, LV_OPA_COVER, border_width, radius, &top_bg_grad,
+                                   &top_border_grad);
+        skin->bg_img.tx_info = &tx_info_bg_dsc;
+    } else {
+        LV_LOG_ERROR("Unknown tx_info style size");
+        skin->bg_img.tx_info = NULL;
+    }
+
+    /* Frequency gets the yellow bolt: it's the headline number */
+    lv_grad_dsc_t freq_border_grad = btn_border_grad;
+    if (style_get_size(&style.freq_info, &w, &h)) {
+        render_grad_bg_with_border(w, h, &freq_info_bg_dsc, top_block_opa, border_width, radius, &top_bg_grad,
+                                   &freq_border_grad);
+        skin->bg_img.freq_info = &freq_info_bg_dsc;
+    } else {
+        LV_LOG_ERROR("Unknown freq_info style size");
+        skin->bg_img.freq_info = NULL;
+    }
+
+    /* Dialogs and panels: storm surface, bolt flash on the edges */
+    lv_grad_dsc_t dialog_bg_grad = {
+        .dir         = LV_GRAD_DIR_VER,
+        .stops_count = 3,
+        .stops       = {
+                        [0] = {.color = cloud, .frac = 0},
+                        [1] = {.color = storm, .frac = 60},
+                        [2] = {.color = night, .frac = 255},
+                        }
+    };
+    lv_grad_dsc_t dialog_border_grad = {
+        .dir         = LV_GRAD_DIR_VER,
+        .stops_count = 3,
+        .stops       = {
+                        [0] = {.color = bolt, .frac = 0},
+                        [1] = {.color = haze, .frac = 40},
+                        [2] = {.color = storm, .frac = 255},
+                        }
+    };
+    if (style_get_size(&style.dialog.base, &w, &h)) {
+        render_grad_bg_with_border(w, h, &dialog_bg_dsc, 255 * 95 / 100, border_width, radius, &dialog_bg_grad,
+                                   &dialog_border_grad);
+        skin->bg_img.dialog = &dialog_bg_dsc;
+    } else {
+        LV_LOG_ERROR("Unknown dialog style size");
+        skin->bg_img.dialog = NULL;
+    }
+
+    skin->panel.bg_grad      = dialog_bg_grad;
+    skin->panel.border_grad  = dialog_border_grad;
+    skin->panel.opa          = LV_OPA_90;
+    skin->panel.border_width = border_width;
+    skin->panel.radius       = radius;
+
+    /* Messages: bolt rim all round */
+    lv_grad_dsc_t msg_grad = {
+        .dir         = LV_GRAD_DIR_VER,
+        .stops_count = 2,
+        .stops       = {
+                        [0] = {.color = cloud, .frac = 0},
+                        [1] = {.color = storm, .frac = 255},
+                        }
+    };
+    lv_grad_dsc_t msg_border_grad = {
+        .dir         = LV_GRAD_DIR_VER,
+        .stops_count = 3,
+        .stops       = {
+                        [0] = {.color = bolt, .frac = 0},
+                        [1] = {.color = lv_color_hex(0xfbc02d), .frac = 128},
+                        [2] = {.color = bolt, .frac = 255},
+                        }
+    };
+    if (style_get_size(&style.msg, &w, &h)) {
+        render_grad_bg_with_border(w, h, &msg_bg_dsc, LV_OPA_90, border_width, radius, &msg_grad, &msg_border_grad);
+        skin->bg_img.msg = &msg_bg_dsc;
+    } else {
+        LV_LOG_ERROR("Unknown msg style size");
+        skin->bg_img.msg = NULL;
+    }
+
+    if (style_get_size(&style.msg_tiny, &w, &h)) {
+        render_grad_bg_with_border(w, h, &msg_tiny_bg_dsc, LV_OPA_COVER, border_width, radius, &msg_grad,
+                                   &msg_border_grad);
+        skin->bg_img.msg_tiny = &msg_tiny_bg_dsc;
+    } else {
+        LV_LOG_ERROR("Unknown msg_tiny style size");
+        skin->bg_img.msg_tiny = NULL;
+    }
+}
+
 static void set_skin(skin_t *skin) {
     style.wf_palette = skin->wf_palette;
     style.colors.mark = skin->mark_color;
@@ -934,6 +1159,20 @@ static void set_skin(skin_t *skin) {
     lv_style_set_text_color(&style.rgb.val_label, skin->base_text_color);
 
     lv_style_set_text_color(&style.text_muted_color, muted_text_color);
+
+    /* Accent */
+    lv_style_set_bg_img_recolor(&style.btn.active, skin->accent_color);
+    lv_style_set_bg_img_recolor_opa(&style.btn.active, skin->accent_opa);
+    lv_style_set_border_color(&style.dialog.item_focus, skin->focus_border_color);
+    if (skin->focus_fill) {
+        lv_style_set_bg_opa(&style.dialog.item_focus, LV_OPA_90);
+        lv_style_set_bg_color(&style.dialog.item_focus, skin->focus_bg_color);
+        lv_style_set_bg_color(&style.dialog.item_edited, skin->edited_bg_color);
+    } else {
+        lv_style_set_bg_opa(&style.dialog.item_focus, 128);
+        lv_style_remove_prop(&style.dialog.item_focus, LV_STYLE_BG_COLOR);
+        lv_style_remove_prop(&style.dialog.item_edited, LV_STYLE_BG_COLOR);
+    }
 
     /* Spectrum */
     update_spectrum_color(skin);

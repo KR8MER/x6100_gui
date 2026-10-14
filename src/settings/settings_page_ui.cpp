@@ -645,7 +645,7 @@ static void make_theme(SettingsPage &page) {
     page.label("Theme");
 
     lv_obj_t *obj =
-        page.dropdown_int(page.grid, *cfg.ui.theme(), " Simple \n Black \n Flat", nullptr, apply_theme);
+        page.dropdown_int(page.grid, *cfg.ui.theme(), " Simple \n Black \n Flat \n Lightning", nullptr, apply_theme);
 
     lv_obj_set_size(obj, SMALL_6, 56);
     lv_obj_set_grid_cell(obj, LV_GRID_ALIGN_START, 1, 6, LV_GRID_ALIGN_CENTER, page.row, 1);
