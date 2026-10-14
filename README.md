@@ -2,8 +2,10 @@
 
 This fork by **KR8MER** adds the **Lightning** theme (Settings → Theme), styled
 after the EAS Station Lightning theme: storm-navy panels, electric-yellow and
-cyan edges, a glowing spectrum, a red flash on key-down, and a KR8MER boot
-splash. Lightning is the default on a fresh install. Images are on this fork's
+cyan edges, a glowing scope-style spectrum, gradient buttons and menus, a red
+flash on key-down, and a KR8MER boot logo and splash. Lightning is the default on
+a fresh install. Settings → UI → Clock time zone (and an optional second zone)
+changes the time the clock shows; the radio's own clock stays on UTC. Images are on this fork's
 [Releases](https://github.com/KR8MER/x6100_gui/releases) page.
 
 Built on the X6100 GUI by R1CBU and the OpenX6100 contributors.

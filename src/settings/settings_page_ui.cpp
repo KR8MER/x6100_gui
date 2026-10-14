@@ -1,4 +1,5 @@
 #include "settings_widgets.h"
+#include "../tz_display.h"
 
 #include "../settings_types.h"
 
@@ -46,6 +47,19 @@ static void make_clock(SettingsPage &page) {
     lv_obj_set_grid_cell(obj, LV_GRID_ALIGN_START, col, 2, LV_GRID_ALIGN_CENTER, page.row, 1);
     col += 2;
 
+    page.row++;
+
+    /* Time zones: display only, the system clock stays on UTC */
+    page.label("Clock time zone");
+    obj = page.dropdown_int(page.grid, *cfg.ui.clock_tz(), tz_dropdown_options(false));
+    lv_obj_set_size(obj, SMALL_6, 56);
+    lv_obj_set_grid_cell(obj, LV_GRID_ALIGN_START, 1, 6, LV_GRID_ALIGN_CENTER, page.row, 1);
+    page.row++;
+
+    page.label("Second time zone");
+    obj = page.dropdown_int(page.grid, *cfg.ui.clock_tz2(), tz_dropdown_options(true));
+    lv_obj_set_size(obj, SMALL_6, 56);
+    lv_obj_set_grid_cell(obj, LV_GRID_ALIGN_START, 1, 6, LV_GRID_ALIGN_CENTER, page.row, 1);
     page.row++;
 }
 

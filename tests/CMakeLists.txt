@@ -12,6 +12,11 @@ add_executable(test_qth test_qth.cpp)
 target_link_libraries(test_qth PRIVATE QTH Catch2::Catch2WithMain)
 add_test(NAME test_qth COMMAND $<TARGET_FILE:test_qth> --colour-mode=ansi )
 
+# test_tz: clock time zones (plain C, no dependencies)
+add_executable(test_tz test_tz.cpp ${PROJECT_SOURCE_DIR}/src/tz_display.c)
+target_link_libraries(test_tz PRIVATE Catch2::Catch2WithMain)
+add_test(NAME test_tz COMMAND $<TARGET_FILE:test_tz> --colour-mode=ansi)
+
 add_subdirectory(../src/ft8 ${CMAKE_BINARY_DIR}/src/ft8)
 add_executable(test_ft8_qso test_ft8_qso.cpp)
 target_link_libraries(test_ft8_qso PRIVATE ft8_core QTH aether_x6100_control Catch2::Catch2WithMain)

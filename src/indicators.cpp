@@ -49,6 +49,7 @@ static lv_style_t ind_style_active;
 static lv_style_t ind_style_disabled;
 static lv_style_t atu_style_out_of_range;
 static lv_style_t ind_sep_style;  // group separator style
+static lv_obj_t   *strip;         // backdrop for the whole row
 
 
 
@@ -77,6 +78,13 @@ void indicators_init(lv_obj_t * parent, lv_coord_t h, lv_coord_t meter_w) {
     lv_style_set_height(&ind_sep_style, 26);
 
     // End styles
+
+    /* Strip behind the whole row (empty style unless the skin draws one) */
+    strip = lv_obj_create(parent);
+    lv_obj_remove_style_all(strip);
+    lv_obj_set_size(strip, SCREEN_WIDTH, h);
+    lv_obj_clear_flag(strip, LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_style(strip, &style.ind_bar, 0);
 
     cont_left = lv_obj_create(parent);
     lv_obj_remove_style_all(cont_left);
@@ -162,9 +170,11 @@ void indicators_left_show(bool v) {
 
 void indicators_show(bool v) {
     if (!v) {
+        lv_obj_add_flag(strip, LV_OBJ_FLAG_HIDDEN);
         lv_obj_add_flag(cont_left, LV_OBJ_FLAG_HIDDEN);
         lv_obj_add_flag(cont_right, LV_OBJ_FLAG_HIDDEN);
     } else {
+        lv_obj_clear_flag(strip, LV_OBJ_FLAG_HIDDEN);
         lv_obj_clear_flag(cont_left, LV_OBJ_FLAG_HIDDEN);
         lv_obj_clear_flag(cont_right, LV_OBJ_FLAG_HIDDEN);
     }

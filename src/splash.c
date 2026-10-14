@@ -8,6 +8,9 @@
 
 #include "splash.h"
 
+#include <stdio.h>
+#include <stdlib.h>
+
 #include "globals.h"
 #include "main.h"
 #include "styles.h"
@@ -18,7 +21,16 @@
 #define BOLT_W 96
 #define BOLT_H 140
 
+/* The boot logo (KR8MER Buildroot) as an 8-bit indexed LVGL image body:
+ * 256 x ARGB8888 palette followed by one index per pixel. */
+#ifndef LOGO_PATH
+#define LOGO_PATH  "/usr/share/x6100/images/splash_logo.bin"
+#endif
+#define LOGO_SIZE  (256 * 4 + SCREEN_WIDTH * SCREEN_HEIGHT)
+
 static lv_obj_t     *splash;
+static lv_img_dsc_t logo_dsc;
+static uint8_t      *logo_data;
 
 /* Lightning bolt in a BOLT_W x BOLT_H box, as two convex halves:
  * LVGL fills convex polygons only. */
@@ -71,7 +83,55 @@ static void fade_cb(void *obj, int32_t v) {
 static void fade_done_cb(lv_anim_t *a) {
     lv_obj_del(splash);
     splash = NULL;
+    free(logo_data);
+    logo_data = NULL;
 }
+
+static bool load_logo(void) {
+    FILE *f = fopen(LOGO_PATH, "rb");
+    if (!f) {
+        return false;
+    }
+    logo_data = malloc(LOGO_SIZE);
+    bool ok = logo_data && fread(logo_data, 1, LOGO_SIZE, f) == LOGO_SIZE;
+    fclose(f);
+    if (!ok) {
+        free(logo_data);
+        logo_data = NULL;
+        return false;
+    }
+    logo_dsc.header.always_zero = 0;
+    logo_dsc.header.cf          = LV_IMG_CF_INDEXED_8BIT;
+    logo_dsc.header.w           = SCREEN_WIDTH;
+    logo_dsc.header.h           = SCREEN_HEIGHT;
+    logo_dsc.data_size          = LOGO_SIZE;
+    logo_dsc.data               = logo_data;
+    return true;
+}
+
+/* A lightning flash: a pale overlay that strikes twice and fades */
+static void strike(lv_obj_t *parent) {
+    lv_obj_t *flash = lv_obj_create(parent);
+    lv_obj_remove_style_all(flash);
+    lv_obj_set_size(flash, SCREEN_WIDTH, SCREEN_HEIGHT);
+    lv_obj_set_style_bg_color(flash, lv_color_hex(0xe1f5fe), 0);
+    lv_obj_set_style_bg_opa(flash, LV_OPA_COVER, 0);
+    lv_obj_set_style_opa(flash, LV_OPA_TRANSP, 0);
+
+    lv_anim_t a;
+    lv_anim_init(&a);
+    lv_anim_set_var(&a, flash);
+    lv_anim_set_exec_cb(&a, flicker_cb);
+    lv_anim_set_values(&a, LV_OPA_50, LV_OPA_TRANSP);
+    lv_anim_set_time(&a, 220);
+    lv_anim_set_delay(&a, 650);
+    lv_anim_set_repeat_count(&a, 2);
+    lv_anim_set_repeat_delay(&a, 90);
+    lv_anim_set_path_cb(&a, lv_anim_path_ease_out);
+    lv_anim_start(&a);
+}
+
+static void draw_wordmark(void);
 
 static lv_obj_t *label(lv_obj_t *parent, const char *text, const lv_font_t *font, lv_color_t color,
                        lv_coord_t spacing) {
@@ -97,6 +157,34 @@ void splash_show(void) {
     lv_obj_set_style_bg_grad_color(splash, lv_color_hex(0x060d1f), 0);
     lv_obj_set_style_bg_grad_dir(splash, LV_GRAD_DIR_VER, 0);
 
+    if (load_logo()) {
+        /* Same picture as the boot logo, so start-up runs straight on */
+        lv_obj_t *img = lv_img_create(splash);
+        lv_img_set_src(img, &logo_dsc);
+        lv_obj_set_pos(img, 0, 0);
+        strike(splash);
+    } else {
+        draw_wordmark();
+    }
+
+    lv_obj_t *credit = label(splash, VERSION "  -  built on the X6100 GUI by R1CBU and OpenX6100",
+                             &sony_20, lv_color_hex(0x8fa3c8), 0);
+    lv_obj_align(credit, LV_ALIGN_BOTTOM_MID, 0, -18);
+
+    /* Hold, then fade out and clean up */
+    lv_anim_t f;
+    lv_anim_init(&f);
+    lv_anim_set_var(&f, splash);
+    lv_anim_set_exec_cb(&f, fade_cb);
+    lv_anim_set_values(&f, LV_OPA_COVER, LV_OPA_TRANSP);
+    lv_anim_set_time(&f, SPLASH_FADE_MS);
+    lv_anim_set_delay(&f, SPLASH_HOLD_MS);
+    lv_anim_set_ready_cb(&f, fade_done_cb);
+    lv_anim_start(&f);
+}
+
+/* Drawn fallback when the logo file is missing */
+static void draw_wordmark(void) {
     /* Wordmark row: bolt + call sign */
     lv_obj_t *row = lv_obj_create(splash);
     lv_obj_remove_style_all(row);
@@ -137,19 +225,4 @@ void splash_show(void) {
 
     lv_obj_t *ed = label(splash, "X6100   " BRAND_EDITION_CAPS, &sony_30, lv_color_hex(0x40c4ff), 3);
     lv_obj_align(ed, LV_ALIGN_CENTER, 0, 70);
-
-    lv_obj_t *credit = label(splash, VERSION "  -  built on the X6100 GUI by R1CBU and OpenX6100",
-                             &sony_20, lv_color_hex(0x8fa3c8), 0);
-    lv_obj_align(credit, LV_ALIGN_BOTTOM_MID, 0, -18);
-
-    /* Hold, then fade out and clean up */
-    lv_anim_t f;
-    lv_anim_init(&f);
-    lv_anim_set_var(&f, splash);
-    lv_anim_set_exec_cb(&f, fade_cb);
-    lv_anim_set_values(&f, LV_OPA_COVER, LV_OPA_TRANSP);
-    lv_anim_set_time(&f, SPLASH_FADE_MS);
-    lv_anim_set_delay(&f, SPLASH_HOLD_MS);
-    lv_anim_set_ready_cb(&f, fade_done_cb);
-    lv_anim_start(&f);
 }

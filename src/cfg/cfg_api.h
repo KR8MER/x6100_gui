@@ -202,6 +202,8 @@ typedef struct {
     ParamInt *(*clock_time_timeout)(void); /* p_clock_time_timeout */
     ParamInt *(*clock_power_timeout)(void); /* p_clock_power_timeout */
     ParamInt *(*clock_tx_timeout)(void); /* p_clock_tx_timeout */
+    ParamInt *(*clock_tz)(void); /* p_clock_tz */
+    ParamInt *(*clock_tz2)(void); /* p_clock_tz2 */
 
     ParamInt *(*theme)(void); /* p_theme */
     ParamInt *(*meter_color)(void); /* p_meter_color */

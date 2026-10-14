@@ -11,6 +11,7 @@
 #include <stdlib.h>
 #include "globals.h"
 #include "cfg/cfg_api.h"
+#include "theme_lightning.h"
 
 #define PATH "A:/dev/shm/"
 
@@ -62,6 +63,31 @@ typedef struct {
         lv_color_t readout_bg;
     } chrome;
 
+    // Spectrum fill as an explicit low/mid/high gradient instead of
+    // shades of spectrum_color (unless the user picked a custom colour)
+    struct {
+        bool       on;
+        lv_color_t low;
+        lv_color_t mid;
+        lv_color_t high;
+        lv_color_t line;
+        lv_color_t peak;
+    } spectrum_grad;
+
+    // Checked button artwork (NULL: tint the normal button with accent_color)
+    void      *btn_active_img;
+    lv_color_t btn_active_text;
+
+    // Readout boxes (knobs, band edges)
+    lv_coord_t readout_border;
+    lv_color_t readout_border_color;
+
+    // Indicator row strip (alpha 0: none)
+    lv_color_t ind_bar_top;
+    lv_color_t ind_bar_bottom;
+    lv_opa_t   ind_bar_opa;
+    lv_color_t ind_bar_line;
+
     // Top blocks while transmitting. NULL images: no change on TX.
     struct {
         void      *clock;
@@ -106,6 +132,7 @@ typedef struct {
         lv_opa_t      opa;
         lv_coord_t    border_width;
         lv_coord_t    radius;
+        bool          accent;   // EAS Station accent bar along the top
     } panel;
 } skin_t;
 
@@ -163,6 +190,7 @@ void styles_init(themes_t theme) {
     lv_style_init(&style.ind_text);
     lv_style_init(&style.ind_active);
     lv_style_init(&style.ind_sep);
+    lv_style_init(&style.ind_bar);
 
     /* Buttons */
     lv_style_init(&style.btn.base);
@@ -431,7 +459,13 @@ static void set_spectrum_color(lv_color_t color) {
 }
 
 static void update_spectrum_color(skin_t *skin) {
-    if (param_i_get(cfg.ui.spectrum_use_custom_color())) {
+    if (skin->spectrum_grad.on && !param_i_get(cfg.ui.spectrum_use_custom_color())) {
+        style.colors.spectrum.low  = skin->spectrum_grad.low;
+        style.colors.spectrum.mid  = skin->spectrum_grad.mid;
+        style.colors.spectrum.high = skin->spectrum_grad.high;
+        style.colors.spectrum.line = skin->spectrum_grad.line;
+        style.colors.spectrum.peak = skin->spectrum_grad.peak;
+    } else if (param_i_get(cfg.ui.spectrum_use_custom_color())) {
         lv_color_t col;
         col.full = param_i_get(cfg.ui.spectrum_color());
         set_spectrum_color(col);
@@ -552,10 +586,36 @@ static void render_grad_bg_with_border(lv_coord_t w, lv_coord_t h, lv_img_dsc_t 
     }
 }
 
+/*
+ * EAS Station's signature: a yellow-to-cyan bar along the top edge of a card.
+ * Drawn straight into a rendered background, inside its border and corners.
+ */
+static void draw_accent_bar(lv_img_dsc_t *dsc, lv_coord_t inset, lv_coord_t radius, lv_coord_t height) {
+    lv_coord_t w = dsc->header.w;
+    lv_color_t *px = (lv_color_t *)dsc->data;
+    lv_color_t from = lv_color_hex(0xffeb3b);
+    lv_color_t to   = lv_color_hex(0x40c4ff);
+    lv_coord_t x1 = radius + inset, x2 = w - radius - inset;
+
+    if (x2 <= x1) {
+        return;
+    }
+    for (lv_coord_t y = inset; y < inset + height && y < dsc->header.h; y++) {
+        for (lv_coord_t x = x1; x < x2; x++) {
+            lv_color_t c = lv_color_mix(to, from, (uint8_t)((x - x1) * 255 / (x2 - x1)));
+            c.ch.alpha   = 255;
+            px[y * w + x] = c;
+        }
+    }
+}
+
 static void render_panel_bg(skin_t *skin, lv_coord_t w, lv_coord_t h) {
     render_grad_bg_with_border(w, h, &panel_bg_dsc, skin->panel.opa, skin->panel.border_width, skin->panel.radius,
                                &skin->panel.bg_grad,
                                skin->panel.border_width ? &skin->panel.border_grad : NULL);
+    if (skin->panel.accent) {
+        draw_accent_bar(&panel_bg_dsc, skin->panel.border_width, skin->panel.radius, 3);
+    }
 }
 
 void styles_panel_set_height(lv_coord_t h) {
@@ -638,6 +698,14 @@ static void setup_skin_default(skin_t *skin) {
     skin->tx.freq_info = NULL;
     skin->tx.tx_info   = NULL;
     skin->tx.flash     = lv_color_black();
+
+    skin->ui.spectrum_bg_on     = false;
+    skin->ui.spectrum_grid_opa  = LV_OPA_TRANSP;
+    skin->spectrum_grad.on      = false;
+    skin->btn_active_img        = NULL;
+    skin->readout_border        = 0;
+    skin->ind_bar_opa           = LV_OPA_TRANSP;
+    skin->panel.accent          = false;
 
     skin->s_meter.noise = lv_color_hex(0x777777);
     skin->s_meter.low   = lv_color_hex(0xAAAAAA);
@@ -1018,6 +1086,7 @@ static void setup_skin_lightning(skin_t *skin) {
     static lv_img_dsc_t tx_info_bg_dsc;
     static lv_img_dsc_t dialog_bg_dsc;
     static lv_img_dsc_t clock_tx_dsc;
+    static lv_img_dsc_t btn_active_dsc;
     static lv_img_dsc_t freq_info_tx_dsc;
     static lv_img_dsc_t tx_info_tx_dsc;
 
@@ -1097,13 +1166,15 @@ static void setup_skin_lightning(skin_t *skin) {
     lv_coord_t border_width = 2;
     lv_coord_t radius       = 10;
 
-    /* Buttons: bolt-lit top edge fading into the storm */
+    /* Buttons: glossy storm glass with a bolt-lit top edge */
     lv_grad_dsc_t btn_bg_grad = {
         .dir         = LV_GRAD_DIR_VER,
-        .stops_count = 2,
+        .stops_count = 4,
         .stops       = {
-                        [0] = {.color = cloud, .frac = 0},
-                        [1] = {.color = deep, .frac = 255},
+                        [0] = {.color = lv_color_hex(0x34508f), .frac = 0},
+                        [1] = {.color = cloud, .frac = 105},
+                        [2] = {.color = storm, .frac = 120},
+                        [3] = {.color = deep, .frac = 255},
                         }
     };
     lv_grad_dsc_t btn_border_grad = {
@@ -1124,13 +1195,59 @@ static void setup_skin_lightning(skin_t *skin) {
         skin->bg_img.btn = NULL;
     }
 
-    /* Top blocks: cyan spark along the top edge */
-    lv_grad_dsc_t top_bg_grad = {
+    /* Checked button: EAS Station's yellow-to-cyan header gradient, dark ink */
+    lv_grad_dsc_t btn_active_grad = {
+        .dir         = LV_GRAD_DIR_HOR,
+        .stops_count = 2,
+        .stops       = {
+                        [0] = {.color = bolt, .frac = 0},
+                        [1] = {.color = spark, .frac = 255},
+                        }
+    };
+    lv_grad_dsc_t btn_active_border = {
         .dir         = LV_GRAD_DIR_VER,
         .stops_count = 2,
         .stops       = {
-                        [0] = {.color = cloud, .frac = 0},
-                        [1] = {.color = night, .frac = 255},
+                        [0] = {.color = lv_color_white(), .frac = 0},
+                        [1] = {.color = lv_color_hex(0xfbc02d), .frac = 255},
+                        }
+    };
+    if (style_get_size(&style.btn.base, &w, &h)) {
+        render_grad_bg_with_border(w, h, &btn_active_dsc, LV_OPA_COVER, border_width, radius, &btn_active_grad,
+                                   &btn_active_border);
+        skin->btn_active_img = &btn_active_dsc;
+    }
+    skin->btn_active_text = lv_color_hex(0x0d1b2a);
+
+    /* Spectrum: scope backdrop, blue-to-cyan-to-yellow fill */
+    skin->ui.spectrum_bg_on     = true;
+    skin->ui.spectrum_bg_top    = lv_color_hex(0x03081a);
+    skin->ui.spectrum_bg_bottom = lv_color_hex(0x112456);
+    skin->ui.spectrum_grid      = haze;
+    skin->ui.spectrum_grid_opa  = LV_OPA_20;
+    skin->spectrum_grad.on      = true;
+    skin->spectrum_grad.low     = lv_color_hex(0x0d47a1);
+    skin->spectrum_grad.mid     = lv_color_hex(0x00b0ff);
+    skin->spectrum_grad.high    = bolt;
+    skin->spectrum_grad.line    = lv_color_hex(0xfff9c4);
+    skin->spectrum_grad.peak    = haze;
+
+    /* Readouts and the indicator strip */
+    skin->readout_border       = 1;
+    skin->readout_border_color = haze;
+    skin->ind_bar_top          = cloud;
+    skin->ind_bar_bottom       = night;
+    skin->ind_bar_opa          = LV_OPA_COVER;
+    skin->ind_bar_line         = spark;
+
+    /* Top blocks: glossy glass, cyan spark along the top edge */
+    lv_grad_dsc_t top_bg_grad = {
+        .dir         = LV_GRAD_DIR_VER,
+        .stops_count = 3,
+        .stops       = {
+                        [0] = {.color = lv_color_hex(0x2a4278), .frac = 0},
+                        [1] = {.color = cloud, .frac = 90},
+                        [2] = {.color = night, .frac = 255},
                         }
     };
     lv_grad_dsc_t top_border_grad = {
@@ -1234,6 +1351,7 @@ static void setup_skin_lightning(skin_t *skin) {
     if (style_get_size(&style.dialog.base, &w, &h)) {
         render_grad_bg_with_border(w, h, &dialog_bg_dsc, 255 * 95 / 100, border_width, radius, &dialog_bg_grad,
                                    &dialog_border_grad);
+        draw_accent_bar(&dialog_bg_dsc, border_width, radius, 4);
         skin->bg_img.dialog = &dialog_bg_dsc;
     } else {
         LV_LOG_ERROR("Unknown dialog style size");
@@ -1245,6 +1363,7 @@ static void setup_skin_lightning(skin_t *skin) {
     skin->panel.opa          = LV_OPA_90;
     skin->panel.border_width = border_width;
     skin->panel.radius       = radius;
+    skin->panel.accent       = true;
 
     /* Messages: bolt rim all round */
     lv_grad_dsc_t msg_grad = {
@@ -1375,8 +1494,39 @@ static void set_skin(skin_t *skin) {
     lv_style_set_bg_color(&style.ind_sep, skin->chrome.ind_sep);
     lv_style_set_bg_color(&style.knobs, skin->chrome.readout_bg);
     lv_style_set_bg_color(&style.freq_bounds, skin->chrome.readout_bg);
+    lv_style_set_border_width(&style.knobs, skin->readout_border);
+    lv_style_set_border_width(&style.freq_bounds, skin->readout_border);
+    lv_style_set_border_color(&style.knobs, skin->readout_border_color);
+    lv_style_set_border_color(&style.freq_bounds, skin->readout_border_color);
+    lv_style_set_border_opa(&style.knobs, LV_OPA_60);
+    lv_style_set_border_opa(&style.freq_bounds, LV_OPA_60);
+
+    /* Checked buttons: own artwork, or a tint of the normal one */
+    if (skin->btn_active_img) {
+        lv_style_set_bg_img_src(&style.btn.active, skin->btn_active_img);
+        lv_style_set_text_color(&style.btn.active, skin->btn_active_text);
+        lv_style_set_bg_img_recolor_opa(&style.btn.active, LV_OPA_TRANSP);
+    } else {
+        lv_style_remove_prop(&style.btn.active, LV_STYLE_BG_IMG_SRC);
+        lv_style_remove_prop(&style.btn.active, LV_STYLE_TEXT_COLOR);
+    }
+
+    /* Indicator strip */
+    lv_style_reset(&style.ind_bar);
+    if (skin->ind_bar_opa != LV_OPA_TRANSP) {
+        lv_style_set_bg_opa(&style.ind_bar, skin->ind_bar_opa);
+        lv_style_set_bg_color(&style.ind_bar, skin->ind_bar_top);
+        lv_style_set_bg_grad_color(&style.ind_bar, skin->ind_bar_bottom);
+        lv_style_set_bg_grad_dir(&style.ind_bar, LV_GRAD_DIR_VER);
+        lv_style_set_border_side(&style.ind_bar, LV_BORDER_SIDE_BOTTOM);
+        lv_style_set_border_width(&style.ind_bar, 1);
+        lv_style_set_border_color(&style.ind_bar, skin->ind_bar_line);
+        lv_style_set_border_opa(&style.ind_bar, LV_OPA_50);
+    }
 
     apply_tx_art(skin);
+
+    theme_lightning_enable(skin == &skin_lightning);
 
     lv_obj_report_style_change(NULL);
     lv_obj_invalidate(lv_scr_act());

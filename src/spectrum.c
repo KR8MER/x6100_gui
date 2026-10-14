@@ -743,10 +743,48 @@ static void spectrum_draw_polyline(uint32_t *buf, int stride, float min, float m
     }
 }
 
+/* Scope backdrop: a vertical gradient with a faint level/frequency graticule.
+ * One physical row is built once and copied to every bin. */
+static void spectrum_fill_backdrop(uint32_t *buf, int stride) {
+    static uint32_t line[1024];
+    static uint32_t grid_line[1024];
+
+    if (stride > (int)(sizeof(line) / sizeof(line[0]))) {
+        memset(buf, 0, (size_t)stride * SPECTRUM_NFFT * sizeof(uint32_t));
+        return;
+    }
+
+    const ui_colors_t *ui = &style.colors.ui;
+    uint32_t grid = ui->spectrum_grid.full;
+
+    for (int x = 0; x < stride; x++) {
+        /* column 0 is the top of the screen */
+        lv_color_t c = lv_color_mix(ui->spectrum_bg_bottom, ui->spectrum_bg_top, (uint8_t)(x * 255 / stride));
+        line[x]      = c.full;
+        grid_line[x] = spectrum_blend_xrgb(c.full, grid, ui->spectrum_grid_opa);
+    }
+    /* level lines at quarters */
+    for (int k = 1; k < 4; k++) {
+        int x = stride * k / 4;
+        line[x] = grid_line[x];
+    }
+
+    size_t bytes = (size_t)stride * sizeof(uint32_t);
+    for (int row = 0; row < SPECTRUM_NFFT; row++) {
+        /* frequency lines every tenth of the span */
+        bool v = ui->spectrum_grid_opa && row % (SPECTRUM_NFFT / 10) == SPECTRUM_NFFT / 20;
+        memcpy(&buf[row * stride], v ? grid_line : line, bytes);
+    }
+}
+
 static void spectrum_render_rotated(uint32_t *buf, int stride) {
     static int16_t glow_top[SPECTRUM_NFFT];
 
-    memset(buf, 0, (size_t)stride * SPECTRUM_NFFT * sizeof(uint32_t));
+    if (style.colors.ui.spectrum_bg_on) {
+        spectrum_fill_backdrop(buf, stride);
+    } else {
+        memset(buf, 0, (size_t)stride * SPECTRUM_NFFT * sizeof(uint32_t));
+    }
 
     float min = spectrum_min;
     float max = spectrum_max;

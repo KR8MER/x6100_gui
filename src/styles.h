@@ -48,6 +48,12 @@ typedef struct {
     /* Spectrum: soft halo above the trace (alpha 0 = off) */
     lv_color_t spectrum_glow;
     lv_opa_t   spectrum_glow_opa;
+    /* Spectrum backdrop: vertical gradient and level grid (bg_on false = black) */
+    bool       spectrum_bg_on;
+    lv_color_t spectrum_bg_top;
+    lv_color_t spectrum_bg_bottom;
+    lv_color_t spectrum_grid;
+    lv_opa_t   spectrum_grid_opa;
     lv_color_t spectrum_center;     // center and RTTY marker lines
 
     lv_color_t freq_step_mark;      // underline of the tuning-step digit
@@ -107,6 +113,7 @@ typedef struct {
     lv_style_t ind_text;        // indicator row: idle
     lv_style_t ind_active;      // indicator row: on
     lv_style_t ind_sep;         // indicator row: group separator
+    lv_style_t ind_bar;         // indicator row: strip behind it
 
     struct {
         lv_style_t base;

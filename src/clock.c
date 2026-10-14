@@ -17,6 +17,7 @@
 #include "display.h"
 #include "voice.h"
 #include "msg.h"
+#include "tz_display.h"
 
 #include <time.h>
 #include <sys/time.h>
@@ -30,6 +31,16 @@ typedef enum {
 } clock_state_t;
 
 static lv_obj_t         *obj;
+static lv_obj_t         *zone_label;    // zone under the time, when not plain UTC
+
+typedef enum {
+    TIME_LAYOUT_NONE = 0,
+    TIME_LAYOUT_UTC,        // "18:42:07", as it always was
+    TIME_LAYOUT_ZONE,       // "14:42:07" over "EDT"
+    TIME_LAYOUT_DUAL,       // "18:42 UTC" over "14:42 EDT"
+} time_layout_t;
+
+static time_layout_t    time_layout = TIME_LAYOUT_NONE;
 static pthread_mutex_t  power_mux;
 
 static clock_state_t    state = CLOCK_TIME;
@@ -53,12 +64,73 @@ static void set_state(clock_state_t new_state) {
 
     switch (state) {
         case CLOCK_TIME:
-            lv_obj_set_style_text_font(obj, &sony_38, 0);
+            time_layout = TIME_LAYOUT_NONE;     // show_time() picks the layout
             break;
 
         case CLOCK_POWER:
             lv_obj_set_style_text_font(obj, &sony_30, 0);
+            lv_obj_align(obj, LV_ALIGN_CENTER, 0, 0);
+            if (zone_label) {
+                lv_obj_add_flag(zone_label, LV_OBJ_FLAG_HIDDEN);
+            }
             break;
+    }
+}
+
+static void set_time_layout(time_layout_t layout) {
+    if (layout == time_layout) {
+        return;
+    }
+    time_layout = layout;
+
+    switch (layout) {
+        case TIME_LAYOUT_ZONE:
+            lv_obj_set_style_text_font(obj, &sony_34, 0);
+            lv_obj_set_style_text_line_space(obj, 0, 0);
+            lv_obj_align(obj, LV_ALIGN_CENTER, 0, -9);
+            lv_obj_clear_flag(zone_label, LV_OBJ_FLAG_HIDDEN);
+            break;
+
+        case TIME_LAYOUT_DUAL:
+            lv_obj_set_style_text_font(obj, &sony_26, 0);
+            lv_obj_set_style_text_line_space(obj, -2, 0);
+            lv_obj_align(obj, LV_ALIGN_CENTER, 0, 0);
+            lv_obj_add_flag(zone_label, LV_OBJ_FLAG_HIDDEN);
+            break;
+
+        default:
+            lv_obj_set_style_text_font(obj, &sony_38, 0);
+            lv_obj_set_style_text_line_space(obj, 0, 0);
+            lv_obj_align(obj, LV_ALIGN_CENTER, 0, 0);
+            lv_obj_add_flag(zone_label, LV_OBJ_FLAG_HIDDEN);
+            break;
+    }
+}
+
+/* Time in the chosen zone(s); the system clock itself is UTC */
+static void show_zoned_time(time_t now) {
+    int32_t     zone  = param_i_get(cfg.ui.clock_tz());
+    int32_t     zone2 = param_i_get(cfg.ui.clock_tz2()) - 1;   // -1: off
+    struct tm   t;
+    const char  *abbr;
+
+    tz_convert(now, zone, &t, &abbr);
+
+    if (zone2 >= 0) {
+        struct tm   t2;
+        const char  *abbr2;
+
+        tz_convert(now, zone2, &t2, &abbr2);
+        set_time_layout(TIME_LAYOUT_DUAL);
+        snprintf(str, sizeof(str), "%02i:%02i %s\n%02i:%02i %s", t.tm_hour, t.tm_min, abbr, t2.tm_hour, t2.tm_min,
+                 abbr2);
+    } else if (zone != 0) {
+        set_time_layout(TIME_LAYOUT_ZONE);
+        snprintf(str, sizeof(str), "%02i:%02i:%02i", t.tm_hour, t.tm_min, t.tm_sec);
+        lv_label_set_text(zone_label, abbr);
+    } else {
+        set_time_layout(TIME_LAYOUT_UTC);
+        snprintf(str, sizeof(str), "%02i:%02i:%02i", t.tm_hour, t.tm_min, t.tm_sec);
     }
 }
 
@@ -97,9 +169,7 @@ static void show_time() {
     switch (state) {
         case CLOCK_TIME:
             now = time(NULL);
-            t = localtime(&now);
-
-            snprintf(str, sizeof(str), "%02i:%02i:%02i", t->tm_hour, t->tm_min, t->tm_sec);
+            show_zoned_time(now);
             break;
 
         case CLOCK_POWER:
@@ -167,6 +237,15 @@ lv_obj_t * clock_init(lv_obj_t * parent) {
     obj = lv_label_create(container);
     lv_obj_remove_style_all(obj);
     lv_obj_center(obj);
+    lv_obj_set_style_text_align(obj, LV_TEXT_ALIGN_CENTER, 0);
+
+    zone_label = lv_label_create(container);
+    lv_obj_remove_style_all(zone_label);
+    lv_obj_add_style(zone_label, &style.text_muted_color, 0);
+    lv_obj_set_style_text_font(zone_label, &sony_20, 0);
+    lv_obj_set_style_text_letter_space(zone_label, 2, 0);
+    lv_obj_align(zone_label, LV_ALIGN_CENTER, 0, 20);
+    lv_obj_add_flag(zone_label, LV_OBJ_FLAG_HIDDEN);
 
     set_state(CLOCK_TIME);
     timeout = get_time() + param_i_get(cfg.ui.clock_time_timeout()) * 1000;

@@ -26,6 +26,7 @@
 
 #include "../common/math.h"
 #include "../settings_types.h"
+#include "../tz_display.h"
 #include "computed_parameter.h"
 #include "encoder_bind_types.h"
 #include "parameter.h"
@@ -255,6 +256,12 @@ class SettingsManager {
         StorageType::GLOBAL, pending_writes_, {}, &global_params_};
     Parameter<int32_t> p_clock_tx_timeout{"clock_tx_timeout", 1, {},
         StorageType::GLOBAL, pending_writes_, {}, &global_params_};
+    /* Clock time zone (tz_display.c index; 0 = UTC) and an optional second
+     * zone (0 = off, n = zone n - 1). The system clock itself stays on UTC. */
+    Parameter<int32_t> p_clock_tz{"clock_tz", 0, 0, TZ_ZONE_COUNT - 1,
+        StorageType::GLOBAL, pending_writes_, &global_params_};
+    Parameter<int32_t> p_clock_tz2{"clock_tz2", 0, 0, TZ_ZONE_COUNT,
+        StorageType::GLOBAL, pending_writes_, &global_params_};
 
     // Spectrum (migrated legacy fields)
     Parameter<int32_t> p_spectrum_beta{"spectrum_beta", 70, 0, 90,
