@@ -1,10 +1,22 @@
 name: Build image
 on:
   workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag to create from this commit (empty: build only)'
+        required: false
+        default: ''
   push:
     # Pattern matched against refs/tags
     tags:
       - '**'           # Push events to every tag
+
+permissions:
+  contents: write
+
+env:
+  # A pushed tag, or the tag requested on a manual run, names the image and release
+  REL_NAME: ${{ inputs.tag || github.ref_name }}
 
 jobs:
   build:
@@ -88,8 +100,8 @@ jobs:
     - name: Compress image
       run: |
         cd AetherX6100Buildroot/build/images
-        mv sdcard.img sdcard.${{ github.ref_name }}.img
-        zip sdcard.${{ github.ref_name }}.img.zip sdcard.${{ github.ref_name }}.img
+        mv sdcard.img sdcard.${{ env.REL_NAME }}.img
+        zip sdcard.${{ env.REL_NAME }}.img.zip sdcard.${{ env.REL_NAME }}.img
 
     # Upload image
     # - name: 'Upload image'
@@ -101,6 +113,8 @@ jobs:
     # Create release
     - name: Release
       uses: softprops/action-gh-release@v2
-      if: startsWith(github.ref, 'refs/tags/')
+      if: startsWith(github.ref, 'refs/tags/') || inputs.tag != ''
       with:
-        files: AetherX6100Buildroot/build/images/sdcard.${{ github.ref_name }}.img.zip
+        tag_name: ${{ env.REL_NAME }}
+        target_commitish: ${{ github.sha }}
+        files: AetherX6100Buildroot/build/images/sdcard.${{ env.REL_NAME }}.img.zip
