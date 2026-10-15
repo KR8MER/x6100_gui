@@ -8,10 +8,15 @@
  *  fills in the activator and reference, and the entry goes into the same log
  *  FT8 writes to. Below the form, the latest QSOs; Export writes the whole
  *  log to /mnt/qso_log.adi for LoTW, QRZ, POTA or a desktop logger.
+ *
+ *  On line (page 3), with the operator's own accounts: a call entered is
+ *  looked up on HamQTH (name, QTH, grid, country), and a saved QSO goes
+ *  straight to the QRZ Logbook; Upload QRZ sends whatever is still unsent.
  */
 
 #include "dialog_log.h"
 
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -24,6 +29,7 @@
 #include "hunt_target.h"
 #include "keyboard.h"
 #include "lock_manager.h"
+#include "log_online.h"
 #include "log_rules.h"
 #include "msg.h"
 #include "qso_log.h"
@@ -47,21 +53,32 @@ static void edit_name_cb(button_data_t *b);
 static void edit_ref_cb(button_data_t *b);
 static void export_cb(button_data_t *b);
 static void clear_cb(button_data_t *b);
+static void hamqth_login_cb(button_data_t *b);
+static void qrz_key_cb(button_data_t *b);
+static void upload_cb(button_data_t *b);
+static void lookup_cb(button_data_t *b);
 
-static button_data_t btn_p1   = {.type = BTN_TEXT, .label = "(LOG 1:2)", .press = button_next_page_cb};
+static button_data_t btn_p1   = {.type = BTN_TEXT, .label = "(LOG 1:3)", .press = button_next_page_cb};
 static button_data_t btn_call = {.type = BTN_TEXT, .label = "Call", .press = edit_call_cb};
 static button_data_t btn_rsts = {.type = BTN_TEXT, .label = "Sent", .press = edit_rsts_cb};
 static button_data_t btn_rstr = {.type = BTN_TEXT, .label = "Rcvd", .press = edit_rstr_cb};
 static button_data_t btn_save = {.type = BTN_TEXT, .label = "Save", .press = save_cb};
 
-static button_data_t btn_p2     = {.type = BTN_TEXT, .label = "(LOG 2:2)", .press = button_next_page_cb};
+static button_data_t btn_p2     = {.type = BTN_TEXT, .label = "(LOG 2:3)", .press = button_next_page_cb};
 static button_data_t btn_name   = {.type = BTN_TEXT, .label = "Name", .press = edit_name_cb};
 static button_data_t btn_ref    = {.type = BTN_TEXT, .label = "Park /\nSummit", .press = edit_ref_cb};
 static button_data_t btn_export = {.type = BTN_TEXT, .label = "Export\nADIF", .press = export_cb};
 static button_data_t btn_clear  = {.type = BTN_TEXT, .label = "Clear", .press = clear_cb};
 
+static button_data_t btn_p3     = {.type = BTN_TEXT, .label = "(LOG 3:3)", .press = button_next_page_cb};
+static button_data_t btn_hamqth = {.type = BTN_TEXT, .label = "HamQTH\nLogin", .press = hamqth_login_cb};
+static button_data_t btn_qrzkey = {.type = BTN_TEXT, .label = "QRZ\nKey", .press = qrz_key_cb};
+static button_data_t btn_upload = {.type = BTN_TEXT, .label = "Upload\nQRZ", .press = upload_cb};
+static button_data_t btn_lookup = {.type = BTN_TEXT, .label = "Look up", .press = lookup_cb};
+
 static buttons_page_t page_1 = {{&btn_p1, &btn_call, &btn_rsts, &btn_rstr, &btn_save}};
 static buttons_page_t page_2 = {{&btn_p2, &btn_name, &btn_ref, &btn_export, &btn_clear}};
+static buttons_page_t page_3 = {{&btn_p3, &btn_hamqth, &btn_qrzkey, &btn_upload, &btn_lookup}};
 
 static dialog_t dialog = {
     .run          = false,
@@ -74,6 +91,7 @@ static dialog_t dialog = {
 dialog_t *dialog_log = &dialog;
 
 static lv_obj_t *header;
+static lv_obj_t *info;      // HamQTH lookup result, right of the header
 static lv_obj_t *form;
 static lv_obj_t *table;
 
@@ -84,7 +102,16 @@ static struct {
     char rstr[8];
     char name[32];
     char ref[24];
+    char grid[8];   // from the lookup, saved as the station's grid
 } entry;
+
+/* A lookup reply counts only while its call is still the one entered:
+ * every change of call (and closing the window) moves this on */
+static uint32_t lookup_gen;
+static char     looked_up_name[sizeof(entry.name)];   // the Name the lookup filled in
+
+/* HamQTH user name while the password is asked for */
+static char login_user[PARAM_TEXT_MAX];
 
 /* Which field the text window is editing */
 static char  *editing;
@@ -170,6 +197,9 @@ static void reset_entry(void) {
     int rst = log_default_rst(current_mode());
 
     memset(&entry, 0, sizeof(entry));
+    looked_up_name[0] = 0;
+    lookup_gen++;
+    if (info) lv_label_set_text(info, "");
     snprintf(entry.rsts, sizeof(entry.rsts), "%i", rst);
     snprintf(entry.rstr, sizeof(entry.rstr), "%i", rst);
 
@@ -189,7 +219,13 @@ static bool window_closed(void) {
     return true;
 }
 
+static void start_lookup(bool asked);
+
 static bool edit_ok(void) {
+    char old_call[sizeof(entry.call)];
+    bool call_edit = editing == entry.call;
+
+    snprintf(old_call, sizeof(old_call), "%s", entry.call);
     if (editing) {
         snprintf(editing, editing_len, "%s", textarea_window_get());
         /* calls and references are capitals */
@@ -197,6 +233,19 @@ static bool edit_ok(void) {
             for (char *p = editing; *p; p++) {
                 if (*p >= 'a' && *p <= 'z') *p -= 'a' - 'A';
             }
+        }
+    }
+    if (call_edit && strcmp(old_call, entry.call) != 0) {
+        /* what the last lookup found belongs to the old call */
+        lookup_gen++;
+        entry.grid[0] = 0;
+        if (looked_up_name[0] && strcmp(entry.name, looked_up_name) == 0) {
+            entry.name[0] = 0;
+        }
+        looked_up_name[0] = 0;
+        lv_label_set_text(info, "");
+        if (entry.call[0]) {
+            start_lookup(false);
         }
     }
     refresh_form();
@@ -225,6 +274,249 @@ static void edit_ref_cb(button_data_t *b) {
     edit(entry.ref, sizeof(entry.ref), "Park or summit", CALL_CHARS "-");
 }
 
+/* ---- on line ---- */
+
+/* Server text goes through no_recolor() into messages; the info label
+ * does not colour, so it takes text as it is */
+static void lookup_done(const char *call, callbook_status_t status, const callbook_info_t *found,
+                        const char *error, void *user) {
+    char buf[128];
+
+    /* the window was closed or the call changed since */
+    if (!dialog.run || (uint32_t)(uintptr_t)user != lookup_gen) {
+        return;
+    }
+    switch (status) {
+        case CALLBOOK_OK: {
+            char where[96];
+            const char *sep = found->qth[0] && found->country[0] ? ", " : "";
+
+            if (!entry.name[0] && found->nick[0]) {
+                snprintf(entry.name, sizeof(entry.name), "%s", found->nick);
+                snprintf(looked_up_name, sizeof(looked_up_name), "%s", entry.name);
+            }
+            /* a grid too long for the log is better left out than cut */
+            if (strlen(found->grid) < sizeof(entry.grid)) {
+                snprintf(entry.grid, sizeof(entry.grid), "%s", found->grid);
+            }
+            snprintf(where, sizeof(where), "%s%s%s", found->qth, sep, found->country);
+            lv_label_set_text_fmt(info, "%s  %s   (HamQTH.com)", where, found->grid);
+            refresh_form();
+            break;
+        }
+
+        case CALLBOOK_NOT_FOUND:
+            /* quiet: plenty of calls are not on HamQTH */
+            lv_label_set_text_fmt(info, "%s not on HamQTH.com", call);
+            break;
+
+        case CALLBOOK_BAD_LOGIN:
+            lv_label_set_text(info, "");
+            msg_update_text_fmt("HamQTH: wrong user name or password (LOG 3:3)");
+            break;
+
+        default:
+            lv_label_set_text(info, "");
+            msg_update_text_fmt("HamQTH: %s", no_recolor(error, buf, sizeof(buf)));
+            break;
+    }
+}
+
+/* `asked`: the operator pressed Look up, so say why nothing happens */
+static void start_lookup(bool asked) {
+    if (!log_online_hamqth_ready()) {
+        if (asked) msg_update_text_fmt("Set your HamQTH login first (HamQTH Login)");
+        return;
+    }
+    if (!entry.call[0]) {
+        if (asked) msg_update_text_fmt("Enter the station's call");
+        return;
+    }
+    lookup_gen++;
+    log_online_start_t st = log_online_lookup(entry.call, lookup_done, (void *)(uintptr_t)lookup_gen);
+    if (st == LOG_ONLINE_STARTED) {
+        lv_label_set_text_fmt(info, "Looking up %s...", entry.call);
+    } else if (st == LOG_ONLINE_NO_ACCOUNT) {
+        if (asked) msg_update_text_fmt("Set your HamQTH password first (HamQTH Login)");
+    } else {
+        msg_update_text_fmt("HamQTH: lookup did not start");
+    }
+}
+
+static void lookup_cb(button_data_t *b) {
+    start_lookup(true);
+}
+
+static void qrz_saved_done(const log_online_upload_t *res, void *user) {
+    char buf[128];
+
+    switch (res->result) {
+        case QRZ_RESULT_OK:
+            msg_update_text_fmt("QRZ: %s uploaded", res->call);
+            break;
+        case QRZ_RESULT_DUPLICATE:
+            msg_update_text_fmt("QRZ: %s already in your logbook", res->call);
+            break;
+        default:
+            msg_update_text_fmt("QRZ: %s", no_recolor(res->reason, buf, sizeof(buf)));
+            break;
+    }
+}
+
+static void qrz_batch_done(const log_online_upload_t *res, void *user) {
+    char buf[128];
+    char left[40] = "";
+
+    if (res->remaining > 0) {
+        snprintf(left, sizeof(left), ", %i not sent yet", res->remaining);
+    }
+    if (res->failed) {
+        msg_update_text_fmt("QRZ: %i uploaded, %i already there, %i failed%s: %s", res->uploaded, res->duplicates,
+                            res->failed, left, no_recolor(res->reason, buf, sizeof(buf)));
+    } else {
+        msg_update_text_fmt("QRZ: %i uploaded, %i already there%s", res->uploaded, res->duplicates, left);
+    }
+}
+
+static void upload_cb(button_data_t *b) {
+    switch (log_online_qrz_upload_unsent(qrz_batch_done, NULL)) {
+        case LOG_ONLINE_STARTED:
+            msg_update_text_fmt("QRZ: uploading...");
+            break;
+        case LOG_ONLINE_NO_ACCOUNT:
+            msg_update_text_fmt("Set your QRZ Logbook API key first (QRZ Key)");
+            break;
+        case LOG_ONLINE_BUSY:
+            msg_update_text_fmt("QRZ: an upload is already running");
+            break;
+        case LOG_ONLINE_NOTHING:
+            msg_update_text_fmt("QRZ: every QSO is already uploaded");
+            break;
+        default:
+            msg_update_text_fmt("QRZ: upload did not start");
+            break;
+    }
+}
+
+/* Settings windows. Nothing secret is put back on screen: the password
+ * field starts empty and hides what is typed, the key shows its last 4 */
+
+static void login_check_done(const char *call, callbook_status_t status, const callbook_info_t *found,
+                             const char *error, void *user) {
+    char buf[128];
+
+    if (status == CALLBOOK_OK) {
+        msg_update_text_fmt("HamQTH: logged in. Data provided by HamQTH.com");
+    } else if (status == CALLBOOK_BAD_LOGIN) {
+        msg_update_text_fmt("HamQTH: wrong user name or password");
+    } else {
+        msg_update_text_fmt("HamQTH: %s", no_recolor(error, buf, sizeof(buf)));
+    }
+}
+
+static bool password_ok(void) {
+    char pass[PARAM_TEXT_MAX];
+
+    snprintf(pass, sizeof(pass), "%s", textarea_window_get());
+    /* the window's own copy of the password goes with it */
+    textarea_window_set("");
+    if (!pass[0]) {
+        msg_update_text_fmt("HamQTH login not changed");
+        return window_closed();
+    }
+    param_t_set(cfg.hamqth_user(), login_user);
+    param_t_set(cfg.hamqth_pass(), pass);
+    memset(pass, 0, sizeof(pass));
+    log_online_hamqth_forget();
+
+    if (log_online_lookup("", login_check_done, NULL) == LOG_ONLINE_STARTED) {
+        msg_update_text_fmt("HamQTH: logging in as %s...", login_user);
+    }
+    return window_closed();
+}
+
+static bool password_cancel(void) {
+    textarea_window_set("");
+    return window_closed();
+}
+
+/* After the user name window has closed */
+static void ask_password(void *unused) {
+    if (!dialog.run) return;
+    textarea_window_open_w_label(password_ok, password_cancel, "Password");
+    lv_obj_t *text = textarea_window_text();
+    lv_textarea_set_password_mode(text, true);
+    lv_textarea_set_max_length(text, PARAM_TEXT_MAX - 1);
+    textarea_window_set("");
+}
+
+static bool login_user_ok(void) {
+    snprintf(login_user, sizeof(login_user), "%s", textarea_window_get());
+    if (!login_user[0]) {
+        param_t_set(cfg.hamqth_user(), "");
+        param_t_set(cfg.hamqth_pass(), "");
+        log_online_hamqth_forget();
+        lv_label_set_text(info, "");
+        msg_update_text_fmt("HamQTH login removed");
+    } else {
+        /* open the next window once this one is gone */
+        lv_async_call(ask_password, NULL);
+    }
+    return window_closed();
+}
+
+static void hamqth_login_cb(button_data_t *b) {
+    msg_update_text_fmt("Your HamQTH.com user name (empty removes the login)");
+    textarea_window_open_w_label(login_user_ok, window_closed, "HamQTH user");
+    lv_obj_t *text = textarea_window_text();
+    lv_textarea_set_accepted_chars(text, CALL_CHARS "-_.@");
+    lv_textarea_set_max_length(text, PARAM_TEXT_MAX - 1);
+    textarea_window_set(PARAM_T_GET(cfg.hamqth_user()));
+}
+
+static bool qrz_key_ok(void) {
+    char key[PARAM_TEXT_MAX];
+
+    snprintf(key, sizeof(key), "%s", textarea_window_get());
+    textarea_window_set("");
+    param_t_set(cfg.qrz_key(), key);
+    if (key[0]) {
+        size_t n = strlen(key);
+        msg_update_text_fmt("QRZ key saved (...%s)", n > 4 ? key + n - 4 : "");
+    } else {
+        msg_update_text_fmt("QRZ key removed: QSOs are not uploaded");
+    }
+    memset(key, 0, sizeof(key));
+    return window_closed();
+}
+
+static bool qrz_key_cancel(void) {
+    textarea_window_set("");
+    return window_closed();
+}
+
+static void qrz_key_cb(button_data_t *b) {
+    char   key[PARAM_TEXT_MAX];
+    size_t n;
+
+    param_t_get_into(cfg.qrz_key(), key, sizeof(key));
+    n = strlen(key);
+    if (n) {
+        msg_update_text_fmt("QRZ Logbook API key now ...%s. Type a new one, or none to remove it",
+                            n > 4 ? key + n - 4 : "");
+    } else {
+        msg_update_text_fmt("Your QRZ Logbook API key (QRZ.com > Logbook > Settings)");
+    }
+    memset(key, 0, sizeof(key));
+    textarea_window_open_w_label(qrz_key_ok, qrz_key_cancel, "QRZ key");
+    lv_obj_t *text = textarea_window_text();
+    lv_textarea_set_accepted_chars(text, CALL_CHARS "-");
+    lv_textarea_set_max_length(text, PARAM_TEXT_MAX - 1);
+    textarea_window_set("");
+}
+
+/* ---- buttons ---- */
+
 static void save_cb(button_data_t *b) {
     const char *mycall = PARAM_T_GET(cfg.callsign());
 
@@ -239,7 +531,7 @@ static void save_cb(button_data_t *b) {
 
     qso_log_record_t qso = qso_log_record_create(mycall, entry.call, time(NULL), current_mode(), atoi(entry.rsts),
                                                  atoi(entry.rstr), current_freq(), entry.name, NULL,
-                                                 PARAM_T_GET(cfg.qth()), NULL);
+                                                 PARAM_T_GET(cfg.qth()), entry.grid[0] ? entry.grid : NULL);
     const char *sig = log_sig_for_ref(entry.ref);
     if (sig[0]) {
         snprintf(qso.sig, sizeof(qso.sig), "%s", sig);
@@ -248,6 +540,15 @@ static void save_cb(button_data_t *b) {
 
     if (qso_log_record_save(qso) > 0) {
         msg_update_text_fmt("Logged %s", entry.call);
+        /* straight on to the QRZ Logbook when a key is set */
+        if (log_online_qrz_ready()) {
+            log_online_start_t st = log_online_qrz_upload_qso(qso.time, qso.remote_call, qrz_saved_done, NULL);
+            if (st == LOG_ONLINE_BUSY) {
+                msg_schedule_text_fmt("QRZ: busy, %s goes with the next Upload QRZ", qso.remote_call);
+            } else if (st != LOG_ONLINE_STARTED) {
+                msg_schedule_text_fmt("QRZ: %s not sent, use Upload QRZ", qso.remote_call);
+            }
+        }
         reset_entry();
         refresh_form();
         refresh_table();
@@ -274,14 +575,25 @@ static void construct_cb(lv_obj_t *parent) {
     dialog.obj = dialog_init(parent);
 
     page_1.items[0]->next = &page_2;
-    page_1.items[0]->prev = &page_2;
-    page_2.items[0]->next = &page_1;
+    page_1.items[0]->prev = &page_3;
+    page_2.items[0]->next = &page_3;
     page_2.items[0]->prev = &page_1;
+    page_3.items[0]->next = &page_1;
+    page_3.items[0]->prev = &page_2;
 
     header = lv_label_create(dialog.obj);
     lv_obj_add_style(header, &style.text_muted_color, 0);
     lv_obj_set_style_text_font(header, &sony_22, 0);
     lv_obj_set_pos(header, 16, 12);
+
+    info = lv_label_create(dialog.obj);
+    lv_obj_add_style(info, &style.text_muted_color, 0);
+    lv_obj_set_style_text_font(info, &sony_22, 0);
+    lv_obj_set_style_text_align(info, LV_TEXT_ALIGN_RIGHT, 0);
+    lv_label_set_long_mode(info, LV_LABEL_LONG_DOT);
+    lv_obj_set_width(info, DIALOG_WIDTH / 2 - 24);
+    lv_obj_align(info, LV_ALIGN_TOP_RIGHT, -16, 12);
+    lv_label_set_text(info, "");
 
     form = lv_label_create(dialog.obj);
     lv_label_set_recolor(form, true);
@@ -316,6 +628,9 @@ static void construct_cb(lv_obj_t *parent) {
 static void destruct_cb(void) {
     textarea_window_close();
     lm_set_mode(false);
+    lookup_gen++;   // a lookup still running is ignored when it returns
+    info = NULL;
+    memset(login_user, 0, sizeof(login_user));
 }
 
 static void key_cb(lv_event_t *e) {
