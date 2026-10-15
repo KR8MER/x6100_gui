@@ -300,7 +300,8 @@ static void lookup_done(const char *call, callbook_status_t status, const callbo
                 snprintf(entry.grid, sizeof(entry.grid), "%s", found->grid);
             }
             snprintf(where, sizeof(where), "%s%s%s", found->qth, sep, found->country);
-            lv_label_set_text_fmt(info, "%s  %s   (HamQTH.com)", where, found->grid);
+            /* credit first: a long place name is cut at the end, never the credit */
+            lv_label_set_text_fmt(info, "HamQTH.com: %s  %s", where, found->grid);
             refresh_form();
             break;
         }
@@ -592,6 +593,8 @@ static void construct_cb(lv_obj_t *parent) {
     lv_obj_set_style_text_align(info, LV_TEXT_ALIGN_RIGHT, 0);
     lv_label_set_long_mode(info, LV_LABEL_LONG_DOT);
     lv_obj_set_width(info, DIALOG_WIDTH / 2 - 24);
+    /* one line: "..." needs a fixed height, or the label wraps over the form */
+    lv_obj_set_height(info, lv_font_get_line_height(&sony_22));
     lv_obj_align(info, LV_ALIGN_TOP_RIGHT, -16, 12);
     lv_label_set_text(info, "");
 

@@ -28,7 +28,7 @@ void make_info_page(SettingsPage &page) {
     lv_label_set_text_fmt(label,
                           "%s %s\n"
                           "App version: %s\nBASE version: %s\n"
-                          "Built on the X6100 GUI by R1CBU and OpenX6100",
+                          "Built on the X6100 GUI by R1CBU & OpenX6100",
                           BRAND_CALL, BRAND_EDITION, VERSION, x6100_control_get_fw_version_str());
 
     /* The tuner's setting for this frequency, raw: see atu_log.h */
