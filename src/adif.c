@@ -20,6 +20,7 @@
 #include <stdbool.h>
 #include <unistd.h>
 #include <regex.h>
+#include <strings.h>
 
 #define MHZ 1000000
 #define KHZ 1000
@@ -31,6 +32,12 @@ struct adif_log_s {
 };
 
 static void write_header(FILE *fd);
+
+/* The tag just matched is exactly `key` (not merely a prefix of it) */
+static bool key_is(const char *s, const regmatch_t *m, const char *key) {
+    size_t n = m[1].rm_eo - m[1].rm_so;
+    return n == strlen(key) && strncasecmp(s + m[1].rm_so, key, n) == 0;
+}
 
 static void write_str(FILE *fd, const char * key, const char * val);
 static void write_int(FILE *fd, const char * key, int val);
@@ -78,7 +85,7 @@ void adif_add_qso(adif_log l, qso_log_record_t qso)
     write_str(l->fd, "CALL", qso.remote_call);
     write_date_time(l->fd, qso.time);
     write_mode(l->fd, qso.mode);
-    write_str(l->fd, "NAME", NULL);
+    write_str(l->fd, "NAME", qso.name[0] ? qso.name : NULL);
     write_str(l->fd, "QTH", NULL);
     write_int(l->fd, "RST_SENT", qso.rsts);
     write_str(l->fd, "STX", NULL);
@@ -87,6 +94,15 @@ void adif_add_qso(adif_log l, qso_log_record_t qso)
     write_freq(l->fd, qso.freq_mhz);
     write_str(l->fd, "GRIDSQUARE", qso.remote_grid);
     write_str(l->fd, "MY_GRIDSQUARE", qso.local_grid);
+    if (qso.sig[0] && qso.sig_info[0]) {
+        /* POTA's uploader reads SIG/SIG_INFO; SOTA's reads SOTA_REF */
+        if (strcmp(qso.sig, "SOTA") == 0) {
+            write_str(l->fd, "SOTA_REF", qso.sig_info);
+        } else {
+            write_str(l->fd, "SIG", qso.sig);
+            write_str(l->fd, "SIG_INFO", qso.sig_info);
+        }
+    }
     fprintf(l->fd, "<EOR>\r\n");
     fflush(l->fd);
 }
@@ -126,6 +142,8 @@ int adif_read(const char * path, qso_log_record_t ** records) {
         if (strcmp(line + read - 7, "<EOR>\r\n") != 0) continue;
         s = line;
         cur_record = &(*records)[cur_record_id];
+        memset(cur_record, 0, sizeof(*cur_record));
+        memset(&qso_ts, 0, sizeof(qso_ts));
         char * mode = NULL;
         char * submode = NULL;
         for (unsigned int i = 0; ; i++) {
@@ -161,6 +179,13 @@ int adif_read(const char * path, qso_log_record_t ** records) {
                     COPY_STR(cur_record->local_grid, s + pmatch[0].rm_eo, val_len);
                 } else if (strncmp(s + pmatch[1].rm_so, "GRIDSQUARE", pmatch[1].rm_eo - pmatch[1].rm_so) == 0) {
                     COPY_STR(cur_record->remote_grid, s + pmatch[0].rm_eo, val_len);
+                } else if (key_is(s, pmatch, "SIG")) {
+                    COPY_STR(cur_record->sig, s + pmatch[0].rm_eo, val_len);
+                } else if (key_is(s, pmatch, "SIG_INFO")) {
+                    COPY_STR(cur_record->sig_info, s + pmatch[0].rm_eo, val_len);
+                } else if (key_is(s, pmatch, "SOTA_REF")) {
+                    strcpy(cur_record->sig, "SOTA");
+                    COPY_STR(cur_record->sig_info, s + pmatch[0].rm_eo, val_len);
                 }
             }
 

@@ -44,6 +44,15 @@ typedef enum {
     ACTION_APP_CALLSIGN,
     ACTION_APP_WIFI,
     ACTION_APP_BT = 116,
+
+    /* KR8MER: Nexus-style operating. 113-115 left free for upstream. */
+    ACTION_APP_LOG = 120,       // log a QSO / the logbook
+    ACTION_APP_HUNTER = 121,    // POTA/SOTA hunter
+    ACTION_COCKPIT_PHONE = 122,
+    ACTION_COCKPIT_CW = 123,
+    ACTION_COCKPIT_DIGITAL = 124,
+    ACTION_COCKPIT_RTTY = 125,
+    ACTION_MESSAGES = 126,      // the CW or voice message keyer for the mode
 } press_action_t;
 
 typedef enum {

@@ -443,11 +443,24 @@ static buttons_page_t page_dfl_1 = {
     {&btn_flt_low, &btn_flt_high, &btn_flt_bw}
 };
 
-/* App pages */
-static button_data_t btn_app_p1 = make_page_btn("(APP 1:3)", "Application|page 1");
-static button_data_t btn_app_p2 = make_page_btn("(APP 2:3)", "Application|page 2");
-static button_data_t btn_app_p3 = make_page_btn("(APP 3:3)", "Application|page 3");
+/* Cockpits (Nexus-style operating) */
+static button_data_t btn_ck_phone = make_action_btn("Phone", ACTION_COCKPIT_PHONE);
+static button_data_t btn_ck_cw    = make_action_btn("CW", ACTION_COCKPIT_CW);
+static button_data_t btn_ck_digi  = make_action_btn("Digital", ACTION_COCKPIT_DIGITAL);
+static button_data_t btn_ck_rtty  = make_action_btn("RTTY", ACTION_COCKPIT_RTTY);
+static button_data_t btn_log      = make_action_btn("Log\nQSO", ACTION_APP_LOG);
+static button_data_t btn_hunt     = make_action_btn("Hunt\nPOTA", ACTION_APP_HUNTER);
+static button_data_t btn_msgs     = make_action_btn("Messages", ACTION_MESSAGES);
 
+/* App pages */
+static button_data_t btn_app_p0 = make_page_btn("(APP 1:4)", "Cockpits");
+static button_data_t btn_app_p1 = make_page_btn("(APP 2:4)", "Application|page 2");
+static button_data_t btn_app_p2 = make_page_btn("(APP 3:4)", "Application|page 3");
+static button_data_t btn_app_p3 = make_page_btn("(APP 4:4)", "Application|page 4");
+
+static buttons_page_t page_app_0 = {
+    {&btn_app_p0, &btn_ck_phone, &btn_ck_cw, &btn_ck_digi, &btn_ck_rtty}
+};
 static buttons_page_t page_app_1 = {
     {&btn_app_p1, &btn_rtty, &btn_ft8, &btn_swr, &btn_gps}
 };
@@ -455,7 +468,29 @@ static buttons_page_t page_app_2 = {
     {&btn_app_p2, &btn_rec, &btn_qth, &btn_callsign, &btn_settings}
 };
 static buttons_page_t page_app_3 = {
-    {&btn_app_p3, &btn_wifi, &btn_bt}
+    {&btn_app_p3, &btn_wifi, &btn_bt, &btn_log, &btn_hunt}
+};
+
+/* Phone cockpit */
+static button_data_t btn_phone_p1 = make_page_btn("(PHONE 1:2)", "Phone|page 1");
+static button_data_t btn_phone_p2 = make_page_btn("(PHONE 2:2)", "Phone|page 2");
+
+static buttons_page_t page_phone_1 = {
+    {&btn_phone_p1, &btn_log, &btn_msgs, &btn_rec, &btn_hunt}
+};
+static buttons_page_t page_phone_2 = {
+    {&btn_phone_p2, &btn_comp, &btn_imic_hain, &btn_hmic_gain, &btn_tx_pwr}
+};
+
+/* CW cockpit */
+static button_data_t btn_cwop_p1 = make_page_btn("(CW 1:2)", "CW|page 1");
+static button_data_t btn_cwop_p2 = make_page_btn("(CW 2:2)", "CW|page 2");
+
+static buttons_page_t page_cwop_1 = {
+    {&btn_cwop_p1, &btn_log, &btn_msgs, &btn_key_speed, &btn_cw_decoder}
+};
+static buttons_page_t page_cwop_2 = {
+    {&btn_cwop_p2, &btn_hunt, &btn_key_tone, &btn_cw_peak_on, &btn_key_volume}
 };
 
 /* RTTY */
@@ -474,6 +509,7 @@ buttons_group_t buttons_group_gen = {
 };
 
 buttons_group_t buttons_group_app = {
+    &page_app_0,
     &page_app_1,
     &page_app_2,
     &page_app_3,
@@ -501,6 +537,16 @@ buttons_group_t buttons_group_vm = {
     &page_mem_2,
 };
 
+buttons_group_t buttons_group_phone = {
+    &page_phone_1,
+    &page_phone_2,
+};
+
+buttons_group_t buttons_group_cw = {
+    &page_cwop_1,
+    &page_cwop_2,
+};
+
 static struct {
     buttons_page_t **group;
     size_t           size;
@@ -511,6 +557,8 @@ static struct {
     {buttons_group_dfn, ARRAY_SIZE(buttons_group_dfn)},
     {buttons_group_dfl, ARRAY_SIZE(buttons_group_dfl)},
     {buttons_group_vm,  ARRAY_SIZE(buttons_group_vm) },
+    {buttons_group_phone, ARRAY_SIZE(buttons_group_phone)},
+    {buttons_group_cw,  ARRAY_SIZE(buttons_group_cw) },
 };
 
 void buttons_init(lv_obj_t *parent) {

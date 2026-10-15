@@ -187,6 +187,7 @@ static ParamInt *cfg_press_f2(void) { return param_ref<ParamInt>(cfg_instance().
 static ParamInt *cfg_long_f1(void) { return param_ref<ParamInt>(cfg_instance().p_long_f1); }
 static ParamInt *cfg_long_f2(void) { return param_ref<ParamInt>(cfg_instance().p_long_f2); }
 static ParamInt *cfg_charger(void) { return param_ref<ParamInt>(cfg_instance().p_charger); }
+static ParamInt *cfg_cockpit(void) { return param_ref<ParamInt>(cfg_instance().p_cockpit); }
 static ParamInt *cfg_line_in(void) { return param_ref<ParamInt>(cfg_instance().p_line_in); }
 static ParamInt *cfg_line_out(void) { return param_ref<ParamInt>(cfg_instance().p_line_out); }
 static ParamInt *cfg_spmode(void) { return param_ref<ParamInt>(cfg_instance().p_spmode); }
@@ -445,6 +446,7 @@ extern "C" const cfg_refs_t cfg = {
         .line_out = &cfg_line_out,
         .spmode = &cfg_spmode,
         .freq_accel = &cfg_freq_accel,
+        .cockpit = &cfg_cockpit,
     },
     .js8 = {
         .tx_freq = &cfg_js8_tx_freq,

@@ -17,6 +17,17 @@ add_executable(test_tz test_tz.cpp ${PROJECT_SOURCE_DIR}/src/tz_display.c)
 target_link_libraries(test_tz PRIVATE Catch2::Catch2WithMain)
 add_test(NAME test_tz COMMAND $<TARGET_FILE:test_tz> --colour-mode=ansi)
 
+# test_ops: cockpits, log rules, POTA hunt and spot parsing
+find_package(PkgConfig REQUIRED)
+find_package(Threads REQUIRED)
+pkg_check_modules(JANSSON REQUIRED IMPORTED_TARGET jansson)
+add_executable(test_ops test_ops.cpp
+    ${PROJECT_SOURCE_DIR}/src/cockpit_rules.c ${PROJECT_SOURCE_DIR}/src/log_rules.c
+    ${PROJECT_SOURCE_DIR}/src/hunt_target.c ${PROJECT_SOURCE_DIR}/src/pota_spots.c)
+target_compile_definitions(test_ops PRIVATE _GNU_SOURCE)
+target_link_libraries(test_ops PRIVATE Catch2::Catch2WithMain PkgConfig::JANSSON Threads::Threads)
+add_test(NAME test_ops COMMAND $<TARGET_FILE:test_ops> --colour-mode=ansi)
+
 add_subdirectory(../src/ft8 ${CMAKE_BINARY_DIR}/src/ft8)
 add_executable(test_ft8_qso test_ft8_qso.cpp)
 target_link_libraries(test_ft8_qso PRIVATE ft8_core QTH aether_x6100_control Catch2::Catch2WithMain)

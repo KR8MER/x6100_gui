@@ -73,6 +73,8 @@ extern buttons_group_t buttons_group_key;
 extern buttons_group_t buttons_group_dfn;
 extern buttons_group_t buttons_group_dfl;
 extern buttons_group_t buttons_group_vm;
+extern buttons_group_t buttons_group_phone;
+extern buttons_group_t buttons_group_cw;
 
 // TODO: move to applications
 extern buttons_group_t buttons_group_msg_cw;

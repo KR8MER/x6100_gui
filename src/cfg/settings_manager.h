@@ -418,6 +418,9 @@ class SettingsManager {
     // Radio hardware settings
     Parameter<int32_t> p_charger{"charger", 1, 0, 2,
         StorageType::GLOBAL, pending_writes_, &global_params_};
+    /* The active operating cockpit (cockpit.h; 0 = none) */
+    Parameter<int32_t> p_cockpit{"cockpit", 0, 0, 4,
+        StorageType::GLOBAL, pending_writes_, &global_params_};
     Parameter<int32_t> p_line_in{"line_in", 10, {},
         StorageType::GLOBAL, pending_writes_, {}, &global_params_};
     Parameter<int32_t> p_line_out{"line_out", 10, {},

@@ -264,6 +264,7 @@ typedef struct {
     ParamInt *(*line_out)(void); /* p_line_out */
     ParamInt *(*spmode)(void); /* p_spmode */
     ParamInt *(*freq_accel)(void); /* p_freq_accel */
+    ParamInt *(*cockpit)(void); /* p_cockpit */
 } cfg_radio_refs_t;
 
 typedef struct {

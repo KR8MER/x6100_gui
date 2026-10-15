@@ -57,6 +57,9 @@
 #include "freq_info.h"
 #include "lock_manager.h"
 #include "splash.h"
+#include "cockpit.h"
+#include "dialog_log.h"
+#include "dialog_hunter.h"
 
 #include <unistd.h>
 #include <stdint.h>
@@ -149,6 +152,8 @@ static void next_freq_step(bool up) {
     msg_update_text_fmt("Freq step: %i Hz", new_step);
     voice_say_text_fmt("Frequency step %i herz", new_step);
 }
+
+static void open_messages(void);
 
 static void apps_disable() {
     dialog_destruct();
@@ -276,6 +281,35 @@ void main_screen_action(press_action_t action) {
         case ACTION_APP_QTH:
             dialog_construct(dialog_qth, obj);
             voice_say_text_fmt("QTH window");
+            break;
+
+        case ACTION_APP_LOG:
+            panel_hide();
+            dialog_construct(dialog_log, obj);
+            voice_say_text_fmt("Log window");
+            break;
+
+        case ACTION_APP_HUNTER:
+            apps_disable();
+            dialog_construct(dialog_hunter, obj);
+            voice_say_text_fmt("Parks hunter window");
+            break;
+
+        case ACTION_COCKPIT_PHONE:
+            cockpit_enter(COCKPIT_PHONE);
+            break;
+        case ACTION_COCKPIT_CW:
+            cockpit_enter(COCKPIT_CW);
+            break;
+        case ACTION_COCKPIT_DIGITAL:
+            cockpit_enter(COCKPIT_DIGITAL);
+            break;
+        case ACTION_COCKPIT_RTTY:
+            cockpit_enter(COCKPIT_RTTY);
+            break;
+
+        case ACTION_MESSAGES:
+            open_messages();
             break;
 
         case ACTION_APP_CALLSIGN:
@@ -529,8 +563,9 @@ static void keypad_group_page(const event_keypad_t *kp, ParamInt *long_action, b
     }
 }
 
-static void keypad_msg(const event_keypad_t *kp) {
-    if (kp->state == KEYPAD_RELEASE) {
+/* The message keyer for the current mode: CW or voice */
+static void open_messages(void) {
+    {
         switch (cparam_i_get(cfg.cur.mode())) {
             case x6100_mode_cw:
             case x6100_mode_cwr:
@@ -560,6 +595,12 @@ static void keypad_msg(const event_keypad_t *kp) {
                 msg_tiny_set_text_fmt("Not used in this mode");
                 break;
         }
+    }
+}
+
+static void keypad_msg(const event_keypad_t *kp) {
+    if (kp->state == KEYPAD_RELEASE) {
+        open_messages();
     } else if (kp->state == KEYPAD_LONG) {
         main_screen_action(param_i_get(cfg.keys.long_msg()));
     }
@@ -1185,6 +1226,8 @@ lv_obj_t * main_screen(lv_obj_t *overlay_scr) {
     cw_tune_init(spectrum);
 
     msg_schedule_text_fmt(BRAND_CALL " " BRAND_EDITION " " VERSION);
+
+    cockpit_init();
 
     subject_subscribe_delayed_and_notify((Subject*)radio_fg_freq_subj, on_fg_freq_change, NULL);
 

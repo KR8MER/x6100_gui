@@ -15,7 +15,8 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE _GNU_SOURCE)
 
 target_sources(${PROJECT_NAME} PUBLIC
     main.c main_screen.c
-    styles.c splash.c spectrum.c spectrum_glow.c tz_display.c theme_lightning.c radio.c dsp.cpp util.cpp
+    styles.c splash.c spectrum.c spectrum_glow.c tz_display.c theme_lightning.c radio.c
+    cockpit.c cockpit_rules.c dialog_log.c log_rules.c hunt_target.c dialog_hunter.c pota_spots.c cell_columns.c dsp.cpp util.cpp
     app_ports.cpp
     waterfall.c rotary.cpp keyboard.c kbd_rollover.c encoder.c
     events.c msg.c msg_tiny.c keypad.c
@@ -57,6 +58,7 @@ find_package(PkgConfig REQUIRED)
 find_package(Threads REQUIRED)
 pkg_check_modules(deps REQUIRED IMPORTED_TARGET
     libnm dbus-glib-1 sqlite3 libpng libgps sndfile libudev libpulse libpulse-simple alsa bluez
+    libcurl jansson
 )
 
 

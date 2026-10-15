@@ -11,7 +11,7 @@
 #include "rotary.h"
 #include "encoder.h"
 
-#define VERSION "v1.0.2-kr8mer.3"
+#define VERSION "v1.0.2-kr8mer.4"
 
 
 extern rotary_t     *vol;

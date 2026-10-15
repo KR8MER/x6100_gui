@@ -11,6 +11,7 @@
 #include "util.h"
 #include "msg.h"
 #include "adif.h"
+#include "hunt_target.h"
 
 #include <lvgl/src/misc/lv_log.h>
 #include <sqlite3.h>
@@ -18,6 +19,12 @@
 #include <stdlib.h>
 #include <pthread.h>
 #include <stdio.h>
+#include <time.h>
+#include <unistd.h>
+
+#ifndef QSO_LOG_DB_PATH
+#define QSO_LOG_DB_PATH "/mnt/qso_log.db"
+#endif
 
 static sqlite3_stmt     *search_callsign_stmt=NULL;
 static sqlite3          *db = NULL;
@@ -28,7 +35,7 @@ static void* import_adif_thread(void* args);
 
 
 bool qso_log_init() {
-    int rc = sqlite3_open("/mnt/qso_log.db", &db);
+    int rc = sqlite3_open(QSO_LOG_DB_PATH, &db);
 
     if (rc != SQLITE_OK) {
         LV_LOG_ERROR("Can't open qso_log.db");
@@ -163,12 +170,18 @@ int qso_log_record_save(qso_log_record_t qso) {
         return -1;
     }
 
+    /* A pending POTA/SOTA hunt tags the next QSO with its activator */
+    if (!qso.sig[0] &&
+        hunt_target_take(qso.remote_call, time(NULL), qso.sig, sizeof(qso.sig), qso.sig_info, sizeof(qso.sig_info))) {
+        msg_schedule_text_fmt("Logged %s at %s", qso.remote_call, qso.sig_info);
+    }
+
     rc = sqlite3_prepare_v2(
         db, "INSERT OR IGNORE INTO qso_log ("
                 "ts, freq, band, mode, local_callsign, remote_callsign, rsts, rstr, "
-                "local_grid, remote_grid, op_name, canonized_remote_callsign"
+                "local_grid, remote_grid, op_name, canonized_remote_callsign, sig, sig_info"
             ") VALUES (datetime(:ts, 'unixepoch'), :freq, :band, :mode, :local_callsign, :remote_callsign, "
-                ":rsts, :rstr, :local_grid, :remote_grid, :op_name, :canonized_remote_callsign)",
+                ":rsts, :rstr, :local_grid, :remote_grid, :op_name, :canonized_remote_callsign, :sig, :sig_info)",
                        -1, &stmt, 0);
     if (rc != SQLITE_OK) {
         LV_LOG_ERROR("Error in prepairing query");
@@ -200,6 +213,10 @@ int qso_log_record_save(qso_log_record_t qso) {
     rc = bind_optional_text(stmt, sqlite3_bind_parameter_index(stmt, ":remote_grid"), qso.remote_grid);
     if (rc != SQLITE_OK) return -1;
     rc = bind_optional_text(stmt, sqlite3_bind_parameter_index(stmt, ":op_name"), qso.name);
+    if (rc != SQLITE_OK) return -1;
+    rc = bind_optional_text(stmt, sqlite3_bind_parameter_index(stmt, ":sig"), qso.sig[0] ? qso.sig : NULL);
+    if (rc != SQLITE_OK) return -1;
+    rc = bind_optional_text(stmt, sqlite3_bind_parameter_index(stmt, ":sig_info"), qso.sig_info[0] ? qso.sig_info : NULL);
     if (rc != SQLITE_OK) return -1;
 
     char * canonized_remote_callsign = util_canonize_callsign(qso.remote_call, true);
@@ -302,6 +319,106 @@ static void * import_adif_thread(void* args) {
 
 
 
+static bool has_column(const char *table, const char *column) {
+    sqlite3_stmt *stmt;
+    char          sql[64];
+    bool          found = false;
+
+    snprintf(sql, sizeof(sql), "PRAGMA table_info(%s)", table);
+    if (sqlite3_prepare_v2(db, sql, -1, &stmt, NULL) != SQLITE_OK) {
+        return false;
+    }
+    while (sqlite3_step(stmt) == SQLITE_ROW) {
+        const char *name = (const char *)sqlite3_column_text(stmt, 1);
+        if (name && strcmp(name, column) == 0) {
+            found = true;
+            break;
+        }
+    }
+    sqlite3_finalize(stmt);
+    return found;
+}
+
+static void copy_col(char *dst, size_t len, sqlite3_stmt *stmt, int col) {
+    const char *v = (const char *)sqlite3_column_text(stmt, col);
+    snprintf(dst, len, "%s", v ? v : "");
+}
+
+static void read_row(sqlite3_stmt *stmt, qso_log_record_t *r) {
+    memset(r, 0, sizeof(*r));
+    r->time     = (time_t)sqlite3_column_int64(stmt, 0);
+    r->freq_mhz = (float)sqlite3_column_double(stmt, 1);
+    r->band     = sqlite3_column_int(stmt, 2);
+    r->mode     = sqlite3_column_int(stmt, 3);
+    copy_col(r->local_call, sizeof(r->local_call), stmt, 4);
+    copy_col(r->remote_call, sizeof(r->remote_call), stmt, 5);
+    r->rsts = sqlite3_column_int(stmt, 6);
+    r->rstr = sqlite3_column_int(stmt, 7);
+    copy_col(r->local_grid, sizeof(r->local_grid), stmt, 8);
+    copy_col(r->remote_grid, sizeof(r->remote_grid), stmt, 9);
+    copy_col(r->name, sizeof(r->name), stmt, 10);
+    copy_col(r->sig, sizeof(r->sig), stmt, 11);
+    copy_col(r->sig_info, sizeof(r->sig_info), stmt, 12);
+}
+
+#define SELECT_ROWS \
+    "SELECT strftime('%s', ts), freq, band, mode, local_callsign, remote_callsign, rsts, rstr, " \
+    "local_grid, remote_grid, op_name, sig, sig_info FROM qso_log "
+
+int qso_log_recent(qso_log_record_t *out, int max) {
+    sqlite3_stmt *stmt;
+    int           n = 0;
+
+    if (!db || sqlite3_prepare_v2(db, SELECT_ROWS "ORDER BY ts DESC LIMIT ?", -1, &stmt, NULL) != SQLITE_OK) {
+        return 0;
+    }
+    sqlite3_bind_int(stmt, 1, max);
+    while (n < max && sqlite3_step(stmt) == SQLITE_ROW) {
+        read_row(stmt, &out[n++]);
+    }
+    sqlite3_finalize(stmt);
+    return n;
+}
+
+bool qso_log_has_ref(const char *ref) {
+    sqlite3_stmt *stmt;
+    bool          found = false;
+
+    if (!db || sqlite3_prepare_v2(db, "SELECT 1 FROM qso_log WHERE sig_info = ? COLLATE NOCASE LIMIT 1", -1, &stmt,
+                                  NULL) != SQLITE_OK) {
+        return false;
+    }
+    sqlite3_bind_text(stmt, 1, ref, -1, SQLITE_TRANSIENT);
+    found = sqlite3_step(stmt) == SQLITE_ROW;
+    sqlite3_finalize(stmt);
+    return found;
+}
+
+int qso_log_export_adif(const char *path) {
+    sqlite3_stmt *stmt;
+    int           n = 0;
+
+    if (!db || sqlite3_prepare_v2(db, SELECT_ROWS "ORDER BY ts", -1, &stmt, NULL) != SQLITE_OK) {
+        return -1;
+    }
+    unlink(path);
+    adif_log l = adif_log_init(path);
+    if (!l) {
+        sqlite3_finalize(stmt);
+        return -1;
+    }
+    while (sqlite3_step(stmt) == SQLITE_ROW) {
+        qso_log_record_t r;
+        read_row(stmt, &r);
+        adif_add_qso(l, r);
+        n++;
+    }
+    adif_log_close(l);
+    free(l);
+    sqlite3_finalize(stmt);
+    return n;
+}
+
 static bool create_tables() {
     char    *err = 0;
     int     rc;
@@ -328,6 +445,20 @@ static bool create_tables() {
     if (rc != SQLITE_OK) {
         LV_LOG_ERROR(err);
         return false;
+    }
+
+    /* Columns added later (POTA/SOTA references): add them to old logs */
+    static const char *added[] = {"sig", "sig_info"};
+    for (size_t i = 0; i < sizeof(added) / sizeof(added[0]); i++) {
+        if (!has_column("qso_log", added[i])) {
+            char sql[96];
+            snprintf(sql, sizeof(sql), "ALTER TABLE qso_log ADD COLUMN %s TEXT", added[i]);
+            rc = sqlite3_exec(db, sql, NULL, NULL, &err);
+            if (rc != SQLITE_OK) {
+                LV_LOG_ERROR(err);
+                return false;
+            }
+        }
     }
 
     rc = sqlite3_exec(db,
