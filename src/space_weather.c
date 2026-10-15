@@ -15,9 +15,9 @@
 
 #define DAY_SEC      (24 * 60 * 60)
 #define KP_MAX       9.0
-#define G1_KP        5          // NOAA G1 starts at Kp 5, each G level one Kp step up
 #define G_LEVELS     5
-#define KP_ROUNDING  1e-6       // Kp thirds (4.67, 5.33) arrive as rounded decimals
+#define KP_THIRD     (1.0 / 3.0)
+#define KP_ROUNDING  0.01       // Kp thirds (4.67, 5.33) arrive as rounded decimals
 
 bool sw_parse_time(const char *text, time_t *out) {
     struct tm tm = {0};
@@ -149,16 +149,25 @@ bool sw_parse_kp(const char *json, sw_data_t *data) {
 }
 
 /*
- * NOAA Space Weather Scales: G1 Minor (Kp 5) .. G5 Extreme (Kp 9), and
- * "Kp < 5" carries no name: https://www.swpc.noaa.gov/noaa-scales-explanation
- * and https://www.swpc.noaa.gov/products/planetary-k-index
+ * NOAA Space Weather Scales (https://www.swpc.noaa.gov/noaa-scales-explanation):
+ * G1 Minor "Kp = 5", G2 "Kp = 6", G3 "Kp = 7", G4 Severe "Kp = 8, including
+ * a 9-", G5 Extreme "Kp = 9". A whole Kp covers its thirds (5- = 4.67 is
+ * Kp 5), and 9- is named as G4, so G5 starts at 9o. Below G1 there is no
+ * name (https://www.swpc.noaa.gov/products/planetary-k-index).
  */
 int sw_g_level(double kp) {
-    if (!isfinite(kp) || kp + KP_ROUNDING < G1_KP) {
+    static const double start[G_LEVELS] = {5 - KP_THIRD, 6 - KP_THIRD, 7 - KP_THIRD, 8 - KP_THIRD, 9};
+    int                 level           = 0;
+
+    if (!isfinite(kp)) {
         return 0;
     }
-    int level = (int)floor(kp + KP_ROUNDING) - G1_KP + 1;
-    return level > G_LEVELS ? G_LEVELS : level;
+    for (int i = 0; i < G_LEVELS; i++) {
+        if (kp + KP_ROUNDING >= start[i]) {
+            level = i + 1;
+        }
+    }
+    return level;
 }
 
 const char *sw_g_name(int level) {

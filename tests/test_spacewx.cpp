@@ -127,14 +127,17 @@ TEST_CASE("space weather: empty and garbage replies leave data alone", "[test_sp
 TEST_CASE("space weather: NOAA G scale boundaries", "[test_spacewx]") {
     CHECK(sw_g_level(0.0) == 0);
     CHECK(sw_g_level(4.0) == 0);
-    CHECK(sw_g_level(4.67) == 0);
+    CHECK(sw_g_level(4.33) == 0);    // 4+
+    CHECK(sw_g_level(4.67) == 1);    // 5- is Kp 5: G1
     CHECK(sw_g_level(5.0) == 1);
     CHECK(sw_g_level(5.33) == 1);
-    CHECK(sw_g_level(5.67) == 1);
+    CHECK(sw_g_level(5.67) == 2);    // 6-
     CHECK(sw_g_level(6.0) == 2);
+    CHECK(sw_g_level(6.67) == 3);    // 7-
     CHECK(sw_g_level(7.0) == 3);
+    CHECK(sw_g_level(7.67) == 4);    // 8-
     CHECK(sw_g_level(8.0) == 4);
-    CHECK(sw_g_level(8.67) == 4);
+    CHECK(sw_g_level(8.67) == 4);    // 9- is named in G4
     CHECK(sw_g_level(9.0) == 5);
     CHECK(sw_g_level(-1.0) == 0);
 
