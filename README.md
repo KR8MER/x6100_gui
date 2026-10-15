@@ -29,6 +29,67 @@ changes the time the clock shows; the radio's own clock stays on UTC.
 
 Built on the X6100 GUI by R1CBU and the OpenX6100 contributors.
 
+**Time:** Settings → General → Time server picks the internet time server
+(NIST, Google, Cloudflare or a regional pool); the clock is set from it at once
+and on every Wi-Fi connect. The X6100 has no GPS receiver inside, but a USB GPS
+(one that shows up as `/dev/ttyACM0`, as most u-blox dongles do) is used by the
+radio's time daemon whatever server is chosen, and its fix shows in APP → GPS.
+
+## Screenshots
+
+The home screen in the Lightning theme, and the original look it replaces (still
+there: Settings → Theme → Simple):
+
+| Lightning | Original (Simple) |
+|---|---|
+| ![Home screen, Lightning theme](docs/screenshots/home_lightning.jpg) | ![Home screen, original Simple theme](docs/screenshots/home_original.jpg) |
+
+**What is different, and what is not.** Lightning is a theme: the layout, the
+buttons, the knobs and everything the screen shows are the same as the original,
+in the same places. What changes is how it is drawn:
+
+* panels are storm-navy gradients with thin yellow and cyan edges, where the
+  original has flat grey and black
+* the spectrum is a cyan-to-yellow trace with a soft glow over a faint grid,
+  where the original fills it solid yellow; the waterfall runs blue to white
+  instead of blue through green to orange
+* the S-meter is cyan, the VFO badge yellow, and the selected button a
+  yellow-to-cyan gradient (the original uses green and red)
+* when you transmit, the edges turn red and pulse
+
+If you like the original look, pick Simple (or Black or Flat) in Settings →
+Theme; the cockpits, log, POTA hunter, time zones and time server all work the
+same in every theme.
+
+| Transmitting | Settings |
+|---|---|
+| ![Transmitting](docs/screenshots/transmit.jpg) | ![Settings dialog](docs/screenshots/settings.jpg) |
+
+| Cockpit picker (APP, page 1) | Phone cockpit |
+|---|---|
+| ![Cockpit picker](docs/screenshots/cockpit_picker.jpg) | ![Phone cockpit buttons](docs/screenshots/cockpit_phone.jpg) |
+
+| Log QSO | POTA hunter |
+|---|---|
+| ![Log QSO](docs/screenshots/log.jpg) | ![POTA hunter](docs/screenshots/pota_hunter.jpg) |
+
+| FT8 | SWR scan |
+|---|---|
+| ![FT8](docs/screenshots/ft8.jpg) | ![SWR scan](docs/screenshots/swr_scan.jpg) |
+
+| Two time zones on the clock | Black and Flat themes |
+|---|---|
+| ![Clock with UTC and a local zone](docs/screenshots/two_time_zones.jpg) | ![Black theme](docs/screenshots/home_black.jpg) ![Flat theme](docs/screenshots/home_flat.jpg) |
+
+The start-up splash, frame by frame:
+
+![Start-up splash sequence](docs/screenshots/splash_sequence.jpg)
+
+These are drawn off the radio with this firmware's own theme and drawing code
+and sample data (the call signs, spots and log entries are examples). To take
+real ones, set a long press (Settings → UI) to Screenshot; they are saved to the
+DATA partition.
+
 
 This is part of an alternative firmware for X6100 using the LVGL library
 
