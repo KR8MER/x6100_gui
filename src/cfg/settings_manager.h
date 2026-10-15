@@ -265,6 +265,8 @@ class SettingsManager {
         StorageType::GLOBAL, pending_writes_, &global_params_};
     Parameter<int32_t> p_ntp_server{"ntp_server", 0, 0, TIME_SERVER_COUNT - 1,
         StorageType::GLOBAL, pending_writes_, &global_params_};
+    Parameter<int32_t> p_pota_alerts{"pota_alerts", 0, 0, 2,   // off, this band, all bands
+        StorageType::GLOBAL, pending_writes_, &global_params_};
 
     // Spectrum (migrated legacy fields)
     Parameter<int32_t> p_spectrum_beta{"spectrum_beta", 70, 0, 90,
@@ -390,6 +392,16 @@ class SettingsManager {
     Parameter<std::string> p_qth{"qth", "", {},
         StorageType::GLOBAL, pending_writes_, {}, &global_params_};
     Parameter<std::string> p_callsign{"callsign", "", {},
+        StorageType::GLOBAL, pending_writes_, {}, &global_params_};
+
+    // On-line services (KR8MER): call sign lookup, QRZ upload, custom NTP host
+    Parameter<std::string> p_hamqth_user{"hamqth_user", "", {},
+        StorageType::GLOBAL, pending_writes_, {}, &global_params_};
+    Parameter<std::string> p_hamqth_pass{"hamqth_pass", "", {},
+        StorageType::GLOBAL, pending_writes_, {}, &global_params_};
+    Parameter<std::string> p_qrz_key{"qrz_key", "", {},
+        StorageType::GLOBAL, pending_writes_, {}, &global_params_};
+    Parameter<std::string> p_ntp_custom{"ntp_custom", "", {},
         StorageType::GLOBAL, pending_writes_, {}, &global_params_};
 
     // Network

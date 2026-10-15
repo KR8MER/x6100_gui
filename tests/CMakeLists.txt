@@ -28,6 +28,22 @@ target_compile_definitions(test_ops PRIVATE _GNU_SOURCE)
 target_link_libraries(test_ops PRIVATE Catch2::Catch2WithMain PkgConfig::JANSSON Threads::Threads)
 add_test(NAME test_ops COMMAND $<TARGET_FILE:test_ops> --colour-mode=ansi)
 
+# On-line services: parsers only (no network in tests)
+add_executable(test_dxc test_dxc.cpp ${PROJECT_SOURCE_DIR}/src/dx_spots.c)
+target_compile_definitions(test_dxc PRIVATE _GNU_SOURCE)
+target_link_libraries(test_dxc PRIVATE Catch2::Catch2WithMain PkgConfig::JANSSON)
+add_test(NAME test_dxc COMMAND $<TARGET_FILE:test_dxc> --colour-mode=ansi)
+
+add_executable(test_spacewx test_spacewx.cpp ${PROJECT_SOURCE_DIR}/src/space_weather.c)
+target_compile_definitions(test_spacewx PRIVATE _GNU_SOURCE)
+target_link_libraries(test_spacewx PRIVATE Catch2::Catch2WithMain PkgConfig::JANSSON)
+add_test(NAME test_spacewx COMMAND $<TARGET_FILE:test_spacewx> --colour-mode=ansi)
+
+add_executable(test_callbook test_callbook.cpp ${PROJECT_SOURCE_DIR}/src/callbook.c)
+target_compile_definitions(test_callbook PRIVATE _GNU_SOURCE)
+target_link_libraries(test_callbook PRIVATE Catch2::Catch2WithMain)
+add_test(NAME test_callbook COMMAND $<TARGET_FILE:test_callbook> --colour-mode=ansi)
+
 add_subdirectory(../src/ft8 ${CMAKE_BINARY_DIR}/src/ft8)
 add_executable(test_ft8_qso test_ft8_qso.cpp)
 target_link_libraries(test_ft8_qso PRIVATE ft8_core QTH aether_x6100_control Catch2::Catch2WithMain)

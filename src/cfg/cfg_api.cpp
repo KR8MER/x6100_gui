@@ -148,6 +148,7 @@ static ParamInt *cfg_clock_tx_timeout(void) { return param_ref<ParamInt>(cfg_ins
 static ParamInt *cfg_clock_tz(void) { return param_ref<ParamInt>(cfg_instance().p_clock_tz); }
 static ParamInt *cfg_clock_tz2(void) { return param_ref<ParamInt>(cfg_instance().p_clock_tz2); }
 static ParamInt *cfg_ntp_server(void) { return param_ref<ParamInt>(cfg_instance().p_ntp_server); }
+static ParamInt *cfg_pota_alerts(void) { return param_ref<ParamInt>(cfg_instance().p_pota_alerts); }
 static ParamInt *cfg_spectrum_beta(void) { return param_ref<ParamInt>(cfg_instance().p_spectrum_beta); }
 static ParamInt *cfg_spectrum_peak(void) { return param_ref<ParamInt>(cfg_instance().p_spectrum_peak); }
 static ParamInt *cfg_spectrum_peak_hold(void) { return param_ref<ParamInt>(cfg_instance().p_spectrum_peak_hold); }
@@ -176,6 +177,10 @@ static ParamFloat *cfg_ft8_output_gain_offset(void) { return param_ref<ParamFloa
 static ParamText *cfg_ft8_cq_modifier(void) { return param_ref<ParamText>(cfg_instance().p_ft8_cq_modifier); }
 static ParamText *cfg_qth(void) { return param_ref<ParamText>(cfg_instance().p_qth); }
 static ParamText *cfg_callsign(void) { return param_ref<ParamText>(cfg_instance().p_callsign); }
+static ParamText *cfg_hamqth_user(void) { return param_ref<ParamText>(cfg_instance().p_hamqth_user); }
+static ParamText *cfg_hamqth_pass(void) { return param_ref<ParamText>(cfg_instance().p_hamqth_pass); }
+static ParamText *cfg_qrz_key(void) { return param_ref<ParamText>(cfg_instance().p_qrz_key); }
+static ParamText *cfg_ntp_custom(void) { return param_ref<ParamText>(cfg_instance().p_ntp_custom); }
 static ParamInt *cfg_wifi_enabled(void) { return param_ref<ParamInt>(cfg_instance().p_wifi_enabled); }
 static ParamInt *cfg_long_gen(void) { return param_ref<ParamInt>(cfg_instance().p_long_gen); }
 static ParamInt *cfg_long_app(void) { return param_ref<ParamInt>(cfg_instance().p_long_app); }
@@ -255,6 +260,10 @@ extern "C" const cfg_refs_t cfg = {
 
     .qth = &cfg_qth,
     .callsign = &cfg_callsign,
+    .hamqth_user = &cfg_hamqth_user,
+    .hamqth_pass = &cfg_hamqth_pass,
+    .qrz_key = &cfg_qrz_key,
+    .ntp_custom = &cfg_ntp_custom,
 
     .ui = {
         .auto_level_enabled = &cfg_auto_level_enabled,
@@ -284,6 +293,7 @@ extern "C" const cfg_refs_t cfg = {
         .clock_tz = &cfg_clock_tz,
         .clock_tz2 = &cfg_clock_tz2,
         .ntp_server = &cfg_ntp_server,
+        .pota_alerts = &cfg_pota_alerts,
 
         .theme = &cfg_theme,
         .meter_color = &cfg_meter_color,

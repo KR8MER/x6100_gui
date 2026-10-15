@@ -451,12 +451,15 @@ static button_data_t btn_ck_rtty  = make_action_btn("RTTY", ACTION_COCKPIT_RTTY)
 static button_data_t btn_log      = make_action_btn("Log\nQSO", ACTION_APP_LOG);
 static button_data_t btn_hunt     = make_action_btn("Hunt\nPOTA", ACTION_APP_HUNTER);
 static button_data_t btn_msgs     = make_action_btn("Messages", ACTION_MESSAGES);
+static button_data_t btn_cluster  = make_action_btn("DX\nCluster", ACTION_APP_CLUSTER);
+static button_data_t btn_spacewx  = make_action_btn("Space\nWeather", ACTION_APP_SPACEWX);
 
 /* App pages */
-static button_data_t btn_app_p0 = make_page_btn("(APP 1:4)", "Cockpits");
-static button_data_t btn_app_p1 = make_page_btn("(APP 2:4)", "Application|page 2");
-static button_data_t btn_app_p2 = make_page_btn("(APP 3:4)", "Application|page 3");
-static button_data_t btn_app_p3 = make_page_btn("(APP 4:4)", "Application|page 4");
+static button_data_t btn_app_p0 = make_page_btn("(APP 1:5)", "Cockpits");
+static button_data_t btn_app_p1 = make_page_btn("(APP 2:5)", "Application|page 2");
+static button_data_t btn_app_p2 = make_page_btn("(APP 3:5)", "Application|page 3");
+static button_data_t btn_app_p3 = make_page_btn("(APP 4:5)", "Application|page 4");
+static button_data_t btn_app_p4 = make_page_btn("(APP 5:5)", "On line");
 
 static buttons_page_t page_app_0 = {
     {&btn_app_p0, &btn_ck_phone, &btn_ck_cw, &btn_ck_digi, &btn_ck_rtty}
@@ -469,6 +472,9 @@ static buttons_page_t page_app_2 = {
 };
 static buttons_page_t page_app_3 = {
     {&btn_app_p3, &btn_wifi, &btn_bt, &btn_log, &btn_hunt}
+};
+static buttons_page_t page_app_4 = {
+    {&btn_app_p4, &btn_cluster, &btn_spacewx}
 };
 
 /* Phone cockpit */
@@ -513,6 +519,7 @@ buttons_group_t buttons_group_app = {
     &page_app_1,
     &page_app_2,
     &page_app_3,
+    &page_app_4,
 };
 
 buttons_group_t buttons_group_key = {

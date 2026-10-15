@@ -60,6 +60,8 @@
 #include "cockpit.h"
 #include "dialog_log.h"
 #include "dialog_hunter.h"
+#include "dialog_cluster.h"
+#include "dialog_spacewx.h"
 
 #include <unistd.h>
 #include <stdint.h>
@@ -301,6 +303,18 @@ void main_screen_action(press_action_t action) {
             apps_disable();
             dialog_construct(dialog_hunter, obj);
             voice_say_text_fmt("Parks hunter window");
+            break;
+
+        case ACTION_APP_CLUSTER:
+            apps_disable();
+            dialog_construct(dialog_cluster, obj);
+            voice_say_text_fmt("DX cluster window");
+            break;
+
+        case ACTION_APP_SPACEWX:
+            apps_disable();
+            dialog_construct(dialog_spacewx, obj);
+            voice_say_text_fmt("Space weather window");
             break;
 
         case ACTION_COCKPIT_PHONE:

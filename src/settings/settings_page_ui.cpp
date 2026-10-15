@@ -90,6 +90,8 @@ static action_items_t long_action_items[] = {
     {.label = " RTTY cockpit",     .action = ACTION_COCKPIT_RTTY },
     {.label = " Log QSO",          .action = ACTION_APP_LOG      },
     {.label = " POTA hunter",      .action = ACTION_APP_HUNTER   },
+    {.label = " DX cluster",       .action = ACTION_APP_CLUSTER  },
+    {.label = " Space weather",    .action = ACTION_APP_SPACEWX  },
     {.label = NULL,                .action = ACTION_NONE        }
 };
 

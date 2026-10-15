@@ -53,6 +53,8 @@ typedef enum {
     ACTION_COCKPIT_DIGITAL = 124,
     ACTION_COCKPIT_RTTY = 125,
     ACTION_MESSAGES = 126,      // the CW or voice message keyer for the mode
+    ACTION_APP_CLUSTER = 127,   // DX cluster spots
+    ACTION_APP_SPACEWX = 128,   // space weather: solar flux, K index
 } press_action_t;
 
 typedef enum {

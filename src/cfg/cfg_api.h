@@ -205,6 +205,7 @@ typedef struct {
     ParamInt *(*clock_tz)(void); /* p_clock_tz */
     ParamInt *(*clock_tz2)(void); /* p_clock_tz2 */
     ParamInt *(*ntp_server)(void); /* p_ntp_server */
+    ParamInt *(*pota_alerts)(void); /* p_pota_alerts */
 
     ParamInt *(*theme)(void); /* p_theme */
     ParamInt *(*meter_color)(void); /* p_meter_color */
@@ -437,6 +438,10 @@ typedef struct {
 
     ParamText *(*qth)(void); /* p_qth */
     ParamText *(*callsign)(void); /* p_callsign */
+    ParamText *(*hamqth_user)(void); /* p_hamqth_user */
+    ParamText *(*hamqth_pass)(void); /* p_hamqth_pass */
+    ParamText *(*qrz_key)(void); /* p_qrz_key */
+    ParamText *(*ntp_custom)(void); /* p_ntp_custom */
 
 
     cfg_ui_refs_t ui;

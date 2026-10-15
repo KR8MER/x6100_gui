@@ -17,6 +17,8 @@ target_sources(${PROJECT_NAME} PUBLIC
     main.c main_screen.c
     styles.c splash.c spectrum.c spectrum_glow.c tz_display.c time_server.c theme_lightning.c radio.c
     cockpit.c cockpit_rules.c dialog_log.c log_rules.c hunt_target.c dialog_hunter.c pota_spots.c cell_columns.c dsp.cpp util.cpp
+    net_fetch.c dx_spots.c dialog_cluster.c space_weather.c dialog_spacewx.c
+    callbook.c log_online.c pota_watch.c atu_log.c
     app_ports.cpp
     waterfall.c rotary.cpp keyboard.c kbd_rollover.c encoder.c
     events.c msg.c msg_tiny.c keypad.c
