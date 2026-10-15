@@ -181,6 +181,10 @@ typedef struct {
     lv_color_t base_text_color;
 } colors_t;
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 extern styles_t style;
 extern colors_t colors;
 
@@ -223,3 +227,7 @@ void styles_tx_flash_add(lv_obj_t *obj);
 /* Resize the panel background: updates the shared panel style geometry and
  * re-renders the pre-computed gradient bitmap for the current skin. */
 void styles_panel_set_height(lv_coord_t h);
+
+#ifdef __cplusplus
+}
+#endif
