@@ -171,10 +171,8 @@ int qso_log_record_save(qso_log_record_t qso) {
     }
 
     /* A pending POTA/SOTA hunt tags the next QSO with its activator */
-    if (!qso.sig[0] &&
-        hunt_target_take(qso.remote_call, time(NULL), qso.sig, sizeof(qso.sig), qso.sig_info, sizeof(qso.sig_info))) {
-        msg_schedule_text_fmt("Logged %s at %s", qso.remote_call, qso.sig_info);
-    }
+    bool hunted = !qso.sig[0] &&
+        hunt_target_match(qso.remote_call, qso.time, qso.sig, sizeof(qso.sig), qso.sig_info, sizeof(qso.sig_info));
 
     rc = sqlite3_prepare_v2(
         db, "INSERT OR IGNORE INTO qso_log ("
@@ -192,45 +190,45 @@ int qso_log_record_save(qso_log_record_t qso) {
         printf("check point: %i\n", rc);
         printf("column_id: %i\n", sqlite3_bind_parameter_index(stmt, ":ts"));
         fflush(stdout);
-        return -1;
+        goto fail;
     }
     rc = sqlite3_bind_double(stmt, sqlite3_bind_parameter_index(stmt, ":freq"), (double) qso.freq_mhz);
-    if (rc != SQLITE_OK) return -1;
+    if (rc != SQLITE_OK) goto fail;
     rc = sqlite3_bind_int(stmt, sqlite3_bind_parameter_index(stmt, ":band"), qso.band);
-    if (rc != SQLITE_OK) return -1;
+    if (rc != SQLITE_OK) goto fail;
     rc = sqlite3_bind_int(stmt, sqlite3_bind_parameter_index(stmt, ":mode"), qso.mode);
-    if (rc != SQLITE_OK) return -1;
+    if (rc != SQLITE_OK) goto fail;
     rc = sqlite3_bind_text(stmt, sqlite3_bind_parameter_index(stmt, ":local_callsign"), qso.local_call, strlen(qso.local_call), 0);
-    if (rc != SQLITE_OK) return -1;
+    if (rc != SQLITE_OK) goto fail;
     rc = sqlite3_bind_text(stmt, sqlite3_bind_parameter_index(stmt, ":remote_callsign"), qso.remote_call, strlen(qso.remote_call), 0);
-    if (rc != SQLITE_OK) return -1;
+    if (rc != SQLITE_OK) goto fail;
     rc = sqlite3_bind_int(stmt, sqlite3_bind_parameter_index(stmt, ":rsts"), qso.rsts);
-    if (rc != SQLITE_OK) return -1;
+    if (rc != SQLITE_OK) goto fail;
     rc = sqlite3_bind_int(stmt, sqlite3_bind_parameter_index(stmt, ":rstr"), qso.rstr);
-    if (rc != SQLITE_OK) return -1;
+    if (rc != SQLITE_OK) goto fail;
     rc = bind_optional_text(stmt, sqlite3_bind_parameter_index(stmt, ":local_grid"), qso.local_grid);
-    if (rc != SQLITE_OK) return -1;
+    if (rc != SQLITE_OK) goto fail;
     rc = bind_optional_text(stmt, sqlite3_bind_parameter_index(stmt, ":remote_grid"), qso.remote_grid);
-    if (rc != SQLITE_OK) return -1;
+    if (rc != SQLITE_OK) goto fail;
     rc = bind_optional_text(stmt, sqlite3_bind_parameter_index(stmt, ":op_name"), qso.name);
-    if (rc != SQLITE_OK) return -1;
+    if (rc != SQLITE_OK) goto fail;
     rc = bind_optional_text(stmt, sqlite3_bind_parameter_index(stmt, ":sig"), qso.sig[0] ? qso.sig : NULL);
-    if (rc != SQLITE_OK) return -1;
+    if (rc != SQLITE_OK) goto fail;
     rc = bind_optional_text(stmt, sqlite3_bind_parameter_index(stmt, ":sig_info"), qso.sig_info[0] ? qso.sig_info : NULL);
-    if (rc != SQLITE_OK) return -1;
+    if (rc != SQLITE_OK) goto fail;
 
     char * canonized_remote_callsign = util_canonize_callsign(qso.remote_call, true);
 
     rc = bind_optional_text(stmt, sqlite3_bind_parameter_index(stmt, ":canonized_remote_callsign"), canonized_remote_callsign);
     if (rc != SQLITE_OK) {
         free(canonized_remote_callsign);
-        return -1;
+        goto fail;
     }
 
     if(sqlite3_step(stmt) != SQLITE_DONE) {
         printf("Error during execute: `%s`\n", sqlite3_expanded_sql(stmt));
         free(canonized_remote_callsign);
-        return -1;
+        goto fail;
     }
 
     int changed = sqlite3_changes(db);
@@ -241,7 +239,17 @@ int qso_log_record_save(qso_log_record_t qso) {
     free(canonized_remote_callsign);
 
     sqlite3_finalize(stmt);
+
+    /* Only a QSO that went in uses the hunt up, not an ignored duplicate */
+    if (hunted && changed > 0) {
+        hunt_target_done(qso.remote_call);
+        msg_schedule_text_fmt("Logged %s at %s", qso.remote_call, qso.sig_info);
+    }
     return changed;
+
+fail:
+    sqlite3_finalize(stmt);
+    return -1;
 }
 
 
@@ -456,6 +464,7 @@ static bool create_tables() {
             rc = sqlite3_exec(db, sql, NULL, NULL, &err);
             if (rc != SQLITE_OK) {
                 LV_LOG_ERROR(err);
+                sqlite3_free(err);
                 return false;
             }
         }

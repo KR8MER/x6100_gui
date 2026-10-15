@@ -67,20 +67,34 @@ static bool live(time_t now) {
     return hunt.active;
 }
 
-bool hunt_target_take(const char *call, time_t now, char *sig, size_t sig_len, char *ref, size_t ref_len) {
+/* A QSO logged a little before HUNT was pressed still counts */
+#define HUNT_SLACK_SEC 60
+
+bool hunt_target_match(const char *call, time_t qso_time, char *sig, size_t sig_len, char *ref, size_t ref_len) {
     char base[32];
     bool hit = false;
 
     hunt_base_call(call, base, sizeof(base));
     pthread_mutex_lock(&mux);
-    if (live(now) && strcmp(base, hunt.call) == 0) {
+    if (hunt.active && qso_time >= hunt.set_at - HUNT_SLACK_SEC && qso_time - hunt.set_at <= HUNT_TTL_SEC &&
+        strcmp(base, hunt.call) == 0) {
         snprintf(sig, sig_len, "%s", hunt.sig);
         snprintf(ref, ref_len, "%s", hunt.ref);
-        hunt.active = false;
         hit = true;
     }
     pthread_mutex_unlock(&mux);
     return hit;
+}
+
+void hunt_target_done(const char *call) {
+    char base[32];
+
+    hunt_base_call(call, base, sizeof(base));
+    pthread_mutex_lock(&mux);
+    if (strcmp(base, hunt.call) == 0) {
+        hunt.active = false;
+    }
+    pthread_mutex_unlock(&mux);
 }
 
 bool hunt_target_peek(time_t now, char *activator, size_t act_len, char *ref, size_t ref_len) {

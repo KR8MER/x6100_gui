@@ -62,11 +62,15 @@ TEST_CASE("A hunt tags one QSO with that activator, then is gone", "[hunt]") {
     time_t t0 = 1792000000;
 
     hunt_target_set("W1AW", "POTA", "US-1234", t0);
-    CHECK_FALSE(hunt_target_take("K1ABC", t0 + 60, sig, sizeof(sig), ref, sizeof(ref)));
-    REQUIRE(hunt_target_take("W1AW/P", t0 + 60, sig, sizeof(sig), ref, sizeof(ref)));
+    CHECK_FALSE(hunt_target_match("K1ABC", t0 + 60, sig, sizeof(sig), ref, sizeof(ref)));
+    REQUIRE(hunt_target_match("W1AW/P", t0 + 60, sig, sizeof(sig), ref, sizeof(ref)));
     CHECK(std::string(sig) == "POTA");
     CHECK(std::string(ref) == "US-1234");
-    CHECK_FALSE(hunt_target_take("W1AW", t0 + 120, sig, sizeof(sig), ref, sizeof(ref)));
+
+    /* a match alone (an ignored duplicate) does not use the hunt up */
+    CHECK(hunt_target_match("W1AW", t0 + 90, sig, sizeof(sig), ref, sizeof(ref)));
+    hunt_target_done("W1AW/P");
+    CHECK_FALSE(hunt_target_match("W1AW", t0 + 120, sig, sizeof(sig), ref, sizeof(ref)));
 }
 
 TEST_CASE("A hunt expires after four hours", "[hunt]") {
@@ -75,7 +79,19 @@ TEST_CASE("A hunt expires after four hours", "[hunt]") {
 
     hunt_target_set("N8XYZ", "POTA", "US-0001", t0);
     CHECK(hunt_target_peek(t0 + HUNT_TTL_SEC - 1, who, sizeof(who), ref, sizeof(ref)));
-    CHECK_FALSE(hunt_target_take("N8XYZ", t0 + HUNT_TTL_SEC + 1, sig, sizeof(sig), ref, sizeof(ref)));
+    CHECK_FALSE(hunt_target_match("N8XYZ", t0 + HUNT_TTL_SEC + 1, sig, sizeof(sig), ref, sizeof(ref)));
+}
+
+TEST_CASE("An old QSO imported later never takes the hunt", "[hunt]") {
+    char sig[8], ref[24];
+    time_t t0 = 1792000000;
+
+    hunt_target_set("K8ABC", "POTA", "US-2222", t0);
+    /* worked last week, imported from ADIF now */
+    CHECK_FALSE(hunt_target_match("K8ABC", t0 - 7 * 24 * 3600, sig, sizeof(sig), ref, sizeof(ref)));
+    /* logged just before HUNT was pressed still counts */
+    CHECK(hunt_target_match("K8ABC", t0 - 30, sig, sizeof(sig), ref, sizeof(ref)));
+    hunt_target_clear();
 }
 
 TEST_CASE("POTA spots parse, newest first, bad rows dropped", "[pota]") {
@@ -101,4 +117,17 @@ TEST_CASE("POTA spots parse, newest first, bad rows dropped", "[pota]") {
 
     CHECK(pota_spots_parse("{\"not\":\"a list\"}", spots, 8) == -1);
     CHECK(pota_spots_parse("garbage", spots, 8) == -1);
+}
+
+TEST_CASE("A busy feed keeps the newest spots, not the first ones listed", "[pota]") {
+    const char *json = R"([
+      {"activator":"K1OLD","frequency":"14060","mode":"CW","reference":"US-0010","spotTime":"2026-10-15T00:01:00"},
+      {"activator":"K1MID","frequency":"14061","mode":"CW","reference":"US-0011","spotTime":"2026-10-15T00:05:00"},
+      {"activator":"K1NEW","frequency":"14062","mode":"CW","reference":"US-0012","spotTime":"2026-10-15T00:09:00"}
+    ])";
+    pota_spot_t spots[2];
+
+    REQUIRE(pota_spots_parse(json, spots, 2) == 2);
+    CHECK(std::string(spots[0].activator) == "K1NEW");
+    CHECK(std::string(spots[1].activator) == "K1MID");
 }

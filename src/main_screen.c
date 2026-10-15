@@ -279,11 +279,19 @@ void main_screen_action(press_action_t action) {
             break;
 
         case ACTION_APP_QTH:
+            /* Close whatever app is open first: dialog_construct() replaces
+             * current_dialog, which would leave that app running unclosable */
+            if (!dialog_type_is_run(dialog_qth)) {
+                apps_disable();
+            }
             dialog_construct(dialog_qth, obj);
             voice_say_text_fmt("QTH window");
             break;
 
         case ACTION_APP_LOG:
+            if (!dialog_type_is_run(dialog_log)) {
+                apps_disable();
+            }
             panel_hide();
             dialog_construct(dialog_log, obj);
             voice_say_text_fmt("Log window");

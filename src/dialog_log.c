@@ -104,11 +104,24 @@ static void refresh_header(void) {
                           log_mode_name(current_mode()), cockpit_name(cockpit_current()));
 }
 
+/* The form label colours text between '#' marks, and LVGL 8 cannot escape
+ * one, so typed text is shown with '#' as a lookalike (it is saved as typed) */
+static const char *no_recolor(const char *text, char *buf, size_t n) {
+    snprintf(buf, n, "%s", text);
+    for (char *p = buf; *p; p++) {
+        if (*p == '#') *p = '=';
+    }
+    return buf;
+}
+
 static void refresh_form(void) {
     const char *sig = log_sig_for_ref(entry.ref);
+    char        call[sizeof(entry.call)], name[sizeof(entry.name)], ref[sizeof(entry.ref)];
 
-    lv_label_set_text_fmt(form, "#ffeb3b %s#   %s / %s   %s   %s%s%s", entry.call[0] ? entry.call : "(call)",
-                          entry.rsts, entry.rstr, entry.name, sig[0] ? sig : "", sig[0] ? " " : "", entry.ref);
+    lv_label_set_text_fmt(form, "#ffeb3b %s#   %s / %s   %s   %s%s%s",
+                          entry.call[0] ? no_recolor(entry.call, call, sizeof(call)) : "(call)", entry.rsts,
+                          entry.rstr, no_recolor(entry.name, name, sizeof(name)), sig[0] ? sig : "", sig[0] ? " " : "",
+                          no_recolor(entry.ref, ref, sizeof(ref)));
 }
 
 /* Recent QSOs, one string per column */

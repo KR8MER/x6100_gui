@@ -226,8 +226,8 @@ static void write_str(FILE *fd, const char * key, const char * val) {
 }
 
 static void write_int(FILE *fd, const char * key, int val) {
-    char str_val[8];
-    sprintf(str_val, "%i", val);
+    char str_val[16];
+    snprintf(str_val, sizeof(str_val), "%i", val);
     write_str(fd, key, str_val);
 }
 

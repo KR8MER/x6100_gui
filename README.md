@@ -3,8 +3,10 @@
 This fork by **KR8MER** adds the **Lightning** theme (Settings → Theme), styled
 after the EAS Station Lightning theme: storm-navy panels, electric-yellow and
 cyan edges, a glowing scope-style spectrum, gradient buttons and menus, a red
-flash on key-down, and a KR8MER boot logo and splash. Lightning is the default on
-a fresh install. Settings → UI → Clock time zone (and an optional second zone)
+flash on key-down, and a KR8MER boot logo and splash. On start-up a bolt of
+lightning strikes the logo, a spark runs along it and a second bolt lands as you
+are greeted by your callsign; the bolts are drawn fresh every boot. Lightning is
+the default on a fresh install. Settings → UI → Clock time zone (and an optional second zone)
 changes the time the clock shows; the radio's own clock stays on UTC.
 
 **Operating, after [Nexus](https://github.com/kd9taw/Nexus):**

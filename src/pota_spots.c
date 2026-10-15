@@ -38,14 +38,22 @@ int pota_spots_parse(const char *json, pota_spot_t *out, int max) {
     size_t       i;
     json_t      *item;
     int          n = 0;
+    pota_spot_t *all;
 
     if (!root || !json_is_array(root)) {
         json_decref(root);
         return -1;
     }
 
+    /* Parse every spot and keep the newest `max`: the feed's own order is
+     * not by time, so stopping at `max` could drop the fresh ones */
+    all = malloc((json_array_size(root) + 1) * sizeof(*all));
+    if (!all) {
+        json_decref(root);
+        return -1;
+    }
+
     json_array_foreach(root, i, item) {
-        if (n >= max) break;
         if (!json_is_object(item)) continue;
 
         /* frequency is kHz as a string ("14055.5"); some feeds send a number */
@@ -53,7 +61,7 @@ int pota_spots_parse(const char *json, pota_spot_t *out, int max) {
         double  khz = json_is_string(jf) ? atof(json_string_value(jf)) : json_number_value(jf);
         if (khz < 1000 || khz > 60000) continue;   // the radio covers HF and 6 m
 
-        pota_spot_t *s = &out[n];
+        pota_spot_t *s = &all[n];
         memset(s, 0, sizeof(*s));
         s->freq_hz = (int32_t)(khz * 1000.0 + 0.5);
         copy_str(s->activator, sizeof(s->activator), item, "activator");
@@ -69,6 +77,11 @@ int pota_spots_parse(const char *json, pota_spot_t *out, int max) {
     }
     json_decref(root);
 
-    qsort(out, n, sizeof(out[0]), newest_first);
+    qsort(all, n, sizeof(all[0]), newest_first);
+    if (n > max) {
+        n = max;
+    }
+    memcpy(out, all, n * sizeof(*out));
+    free(all);
     return n;
 }

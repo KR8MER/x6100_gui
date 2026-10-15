@@ -16,6 +16,7 @@
 #include "dialog_hunter.h"
 
 #include <curl/curl.h>
+#include <ft8lib/constants.h>
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -159,8 +160,12 @@ static void *fetch_thread(void *arg) {
     return NULL;
 }
 
+/* A fetch is given up on after this long, should its reply never arrive
+ * (curl itself times out well before) */
+#define FETCH_STALE_SEC 60
+
 static void start_fetch(void) {
-    if (fetching) return;
+    if (fetching && time(NULL) - last_fetch < FETCH_STALE_SEC) return;
 
     fetch_result_t *res = calloc(1, sizeof(*res));
     pthread_t       thr;
@@ -247,7 +252,10 @@ static void fetch_done(void *arg) {
     fetch_result_t *res = *(fetch_result_t **)arg;
 
     fetching = false;
-    if (dialog.run && res->generation == generation) {
+    if (dialog.run && res->generation != generation) {
+        /* Reply for a closed-and-reopened Hunter: fetch for this one now */
+        start_fetch();
+    } else if (dialog.run) {
         if (!res->body) {
             lv_label_set_text(status, res->error);
         } else {
@@ -302,10 +310,10 @@ static void mode_filter_cb(button_data_t *b) {
 }
 
 static void hunt_cb(button_data_t *b) {
-    int16_t row = 0, col = 0;
+    uint16_t row = 0, col = 0;
 
     lv_table_get_selected_cell(table, &row, &col);
-    if (!shown_n || row < 0 || row >= shown_n) {
+    if (!shown_n || row == LV_TABLE_CELL_NONE || row >= shown_n) {
         msg_update_text_fmt("Pick a spot first");
         return;
     }
@@ -325,6 +333,8 @@ static void hunt_cb(button_data_t *b) {
     if (!strcmp(s.mode, "CW")) {
         cockpit_enter(COCKPIT_CW);
     } else if (!strcmp(s.mode, "FT8") || !strcmp(s.mode, "FT4")) {
+        /* The FT8 app tunes to its own protocol's nearest calling frequency */
+        param_i_set(cfg.ft8.protocol(), strcmp(s.mode, "FT4") ? FTX_PROTOCOL_FT8 : FTX_PROTOCOL_FT4);
         cockpit_enter(COCKPIT_DIGITAL);
     } else if (!strcmp(s.mode, "FM")) {
         cparam_i_set(cfg.cur.mode(), x6100_mode_nfm);

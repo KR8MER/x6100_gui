@@ -26,9 +26,14 @@ extern "C" {
 void hunt_target_set(const char *activator, const char *sig, const char *ref, time_t now);
 void hunt_target_clear(void);
 
-/* True (and the hunt is used up) when `call` is the hunted activator. The
- * base call is compared, so W1AW/P matches a hunt for W1AW. */
-bool hunt_target_take(const char *call, time_t now, char *sig, size_t sig_len, char *ref, size_t ref_len);
+/* True when a QSO with `call` at `qso_time` belongs to the hunt: the base
+ * call matches (W1AW/P matches a hunt for W1AW) and the QSO was made after
+ * the hunt started and before it expired, so an old QSO imported from ADIF
+ * never takes the reference. Does not use the hunt up. */
+bool hunt_target_match(const char *call, time_t qso_time, char *sig, size_t sig_len, char *ref, size_t ref_len);
+
+/* Use the hunt up, once its QSO is actually in the log */
+void hunt_target_done(const char *call);
 
 /* What is being hunted, for display; false when nothing is */
 bool hunt_target_peek(time_t now, char *activator, size_t act_len, char *ref, size_t ref_len);

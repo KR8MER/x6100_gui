@@ -28,7 +28,7 @@ typedef struct {
     time_t  spot_time;      // UTC
 } pota_spot_t;
 
-/* Parse the JSON array into out (at most max). Returns the count kept, or -1
+/* Parse the JSON array and keep the newest max in out. Returns the count kept, or -1
  * when the text is not a spot list. Spots without a usable frequency are
  * dropped. Newest first. */
 int pota_spots_parse(const char *json, pota_spot_t *out, int max);
