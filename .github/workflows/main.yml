@@ -6,6 +6,11 @@ on:
         description: 'Release tag to create from this commit (empty: build only)'
         required: false
         default: ''
+      full_build:
+        description: 'Rebuild the whole system, ignoring the saved system build'
+        type: boolean
+        required: false
+        default: false
   push:
     # Pattern matched against refs/tags
     tags:
@@ -66,6 +71,30 @@ jobs:
         sed -i "s,^X6100_GUI_SITE_METHOD = git,X6100_GUI_SITE_METHOD = local,g" AetherX6100Buildroot/br2_external/package/x6100-gui/x6100_gui.mk
         sed -i "s,^X6100_GUI_GIT_SUBMODULES,# X6100_GUI_GIT_SUBMODULES,g" AetherX6100Buildroot/br2_external/package/x6100-gui/x6100_gui.mk
 
+    # Saved builds are keyed on the Buildroot revision: a GUI-only change
+    # reuses them, any change to the system (packages, kernel, config) does not
+    - name: Buildroot revision
+      id: br
+      run: echo "rev=$(git -C AetherX6100Buildroot rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+    # Source archives of every package, so they are not downloaded each run
+    - name: Download cache
+      uses: actions/cache@v5
+      with:
+        path: AetherX6100Buildroot/buildroot/dl
+        key: br-dl-${{ steps.br.outputs.rev }}
+        restore-keys: br-dl-
+
+    # The built system (toolchain, libraries, kernel, everything but the GUI).
+    # With it, a run only rebuilds the GUI and the image: minutes, not an hour.
+    - name: Restore system build
+      id: system
+      if: ${{ !inputs.full_build }}
+      uses: actions/cache/restore@v5
+      with:
+        path: AetherX6100Buildroot/build
+        key: br-system-v1-${{ steps.br.outputs.rev }}
+
     # Ccache
     - name: Ccache cache files
       uses: actions/cache@v5
@@ -84,12 +113,26 @@ jobs:
 
     # Build
     - name: Build
+      id: build
       run: |
+        full_build() {
+          make lame
+          make mpg123
+          make libsndfile-dirclean
+          make
+          echo "fresh=true" >> "$GITHUB_OUTPUT"
+        }
         cd AetherX6100Buildroot/build
-        make lame
-        make mpg123
-        make libsndfile-dirclean
-        make
+        if [ "${{ steps.system.outputs.cache-hit }}" = "true" ]; then
+          # Only the GUI changed: rebuild it from this checkout, then the image
+          if ! { make x6100-gui-dirclean && make; }; then
+            echo "::warning::The saved system build did not work; building everything"
+            cd .. && rm -rf build && bash ./br_config.sh && cd build
+            full_build
+          fi
+        else
+          full_build
+        fi
 
     # Replace U-boot
     - name: Replace u-boot
@@ -99,12 +142,35 @@ jobs:
     # Compress image
     - name: Compress image
       run: |
-        cd AetherX6100Buildroot/build/images
-        mv sdcard.img sdcard.${{ env.REL_NAME }}.img
+        mkdir -p out
+        mv AetherX6100Buildroot/build/images/sdcard.img out/sdcard.${{ env.REL_NAME }}.img
+        cd out
         zip sdcard.${{ env.REL_NAME }}.img.zip sdcard.${{ env.REL_NAME }}.img
+        rm sdcard.${{ env.REL_NAME }}.img
+
+    # Save the system build after a full build. Per-package sources and object
+    # files are dropped: every package is already installed, and its stamp
+    # files are all Buildroot needs to know that. Images made on every run
+    # (root filesystem, SD image) are dropped too; the kernel, device tree and
+    # boot loader images stay, as nothing would remake them.
+    - name: Trim system build
+      if: steps.build.outputs.fresh == 'true'
+      run: |
+        cd AetherX6100Buildroot/build
+        find build -mindepth 2 -maxdepth 2 ! -path 'build/buildroot-config/*' \
+            ! -name '.stamp_*' ! -name '.files-list*' ! -name '.br_*' -exec rm -rf {} +
+        rm -f images/rootfs.* images/sdcard*
+        du -sh host target images build
+
+    - name: Save system build
+      if: steps.build.outputs.fresh == 'true'
+      uses: actions/cache/save@v5
+      with:
+        path: AetherX6100Buildroot/build
+        key: br-system-v1-${{ steps.br.outputs.rev }}
 
     # Keep the image on the run even if publishing the release fails, so a
-    # rejected release never throws away a two-hour build.
+    # rejected release never throws away a build.
     # The release tag is created on the commit this run built. GITHUB_TOKEN
     # cannot create a ref whose workflow files differ from the default branch,
     # so do not push workflow changes to main while a release build runs.
@@ -112,7 +178,7 @@ jobs:
       uses: actions/upload-artifact@v6
       with:
         name: sdcard.${{ env.REL_NAME }}.img.zip
-        path: AetherX6100Buildroot/build/images/sdcard.${{ env.REL_NAME }}.img.zip
+        path: out/sdcard.${{ env.REL_NAME }}.img.zip
         compression-level: 0
 
     # Create release
@@ -122,4 +188,4 @@ jobs:
       with:
         tag_name: ${{ env.REL_NAME }}
         target_commitish: ${{ github.sha }}
-        files: AetherX6100Buildroot/build/images/sdcard.${{ env.REL_NAME }}.img.zip
+        files: out/sdcard.${{ env.REL_NAME }}.img.zip
