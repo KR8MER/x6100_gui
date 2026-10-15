@@ -34,6 +34,7 @@
 #include "main_screen.h"
 #include "msg.h"
 #include "pota_spots.h"
+#include "pota_watch.h"
 #include "qso_log.h"
 #include "radio.h"
 #include "scheduler.h"
@@ -57,22 +58,27 @@ static void refresh_cb(button_data_t *b);
 static void band_filter_cb(button_data_t *b);
 static void mode_filter_cb(button_data_t *b);
 static void hunt_cb(button_data_t *b);
+static void alerts_cb(button_data_t *b);
 static const char *band_label(void);
 static const char *mode_label(void);
 
-static button_data_t btn_title   = {.type = BTN_TEXT, .label = "(HUNT)"};
+static button_data_t btn_p1      = {.type = BTN_TEXT, .label = "(HUNT 1:2)", .press = button_next_page_cb};
 static button_data_t btn_refresh = {.type = BTN_TEXT, .label = "Refresh", .press = refresh_cb};
 static button_data_t btn_band    = {.type = BTN_TEXT_FN, .label_fn = band_label, .press = band_filter_cb};
 static button_data_t btn_mode    = {.type = BTN_TEXT_FN, .label_fn = mode_label, .press = mode_filter_cb};
 static button_data_t btn_hunt    = {.type = BTN_TEXT, .label = "HUNT", .press = hunt_cb};
 
-static buttons_page_t page = {{&btn_title, &btn_refresh, &btn_band, &btn_mode, &btn_hunt}};
+static button_data_t btn_p2      = {.type = BTN_TEXT, .label = "(HUNT 2:2)", .press = button_next_page_cb};
+static button_data_t btn_alerts  = {.type = BTN_TEXT_FN, .label_fn = pota_watch_label, .press = alerts_cb};
+
+static buttons_page_t page_1 = {{&btn_p1, &btn_refresh, &btn_band, &btn_mode, &btn_hunt}};
+static buttons_page_t page_2 = {{&btn_p2, &btn_alerts}};
 
 static dialog_t dialog = {
     .run          = false,
     .construct_cb = construct_cb,
     .destruct_cb  = destruct_cb,
-    .btn_page     = &page,
+    .btn_page     = &page_1,
     .key_cb       = NULL,
 };
 
@@ -235,7 +241,11 @@ static void rebuild_table(void) {
         snprintf(c[COL_MODE], 40, "%s", s->mode);
         snprintf(c[COL_CALL], 40, "%s", s->activator);
         snprintf(c[COL_REF], 40, "%s", s->ref);
-        snprintf(c[COL_NEW], 40, "%s", qso_log_has_ref(s->ref) ? "" : "NEW");
+        /* WKD: this activator is already in the log at this park today
+         * (POTA counts one per day); NEW: a park not in the log at all */
+        snprintf(c[COL_NEW], 40, "%s", qso_log_worked_at_ref_today(s->activator, s->ref, now) ? "WKD"
+                                       : qso_log_has_ref(s->ref)                                ? ""
+                                                                                                : "NEW");
         snprintf(c[COL_AGE], 40, "%im", age < 0 ? 0 : age);
         snprintf(c[COL_PARK], 40, "%s", s->park);
     }
@@ -346,6 +356,11 @@ static void hunt_cb(button_data_t *b) {
     msg_update_text_fmt("Hunting %s at %s", s.activator, s.ref);
 }
 
+static void alerts_cb(button_data_t *b) {
+    pota_watch_cycle();
+    buttons_refresh(&btn_alerts);
+}
+
 /* ---- dialog ---- */
 
 static void construct_cb(lv_obj_t *parent) {
@@ -357,6 +372,11 @@ static void construct_cb(lv_obj_t *parent) {
 
     dialog.obj = dialog_init(parent);
     generation++;
+
+    page_1.items[0]->next = &page_2;
+    page_1.items[0]->prev = &page_2;
+    page_2.items[0]->next = &page_1;
+    page_2.items[0]->prev = &page_1;
 
     status = lv_label_create(dialog.obj);
     lv_obj_add_style(status, &style.text_muted_color, 0);

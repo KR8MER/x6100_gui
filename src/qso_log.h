@@ -81,6 +81,10 @@ int qso_log_export_adif(const char *path);
 /* True when a QSO with this POTA/SOTA reference is already in the log */
 bool qso_log_has_ref(const char *ref);
 
+/* True when `call` (any portable form) is already logged at `ref` on the UTC
+ * day of `now`: POTA counts one QSO per activator, park and day */
+bool qso_log_worked_at_ref_today(const char *call, const char *ref, time_t now);
+
 /**
  * Create qso log recort struct.
  * Required params: `local_call`, `remote_call`, qso_time`, `mode`, `rsts`, `rstr`,  and `freq_mhz`

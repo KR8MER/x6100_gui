@@ -402,6 +402,31 @@ bool qso_log_has_ref(const char *ref) {
     return found;
 }
 
+bool qso_log_worked_at_ref_today(const char *call, const char *ref, time_t now) {
+    sqlite3_stmt *stmt;
+    bool          found = false;
+    char         *canon = util_canonize_callsign(call, true);
+
+    if (!canon) {
+        return false;
+    }
+    if (!db || sqlite3_prepare_v2(db,
+                                  "SELECT 1 FROM qso_log WHERE canonized_remote_callsign = ? COLLATE NOCASE "
+                                  "AND sig_info = ? COLLATE NOCASE AND date(ts) = date(?, 'unixepoch') LIMIT 1",
+                                  -1, &stmt, NULL) != SQLITE_OK) {
+        free(canon);
+        return false;
+    }
+    if (sqlite3_bind_text(stmt, 1, canon, -1, SQLITE_TRANSIENT) == SQLITE_OK &&
+        sqlite3_bind_text(stmt, 2, ref, -1, SQLITE_TRANSIENT) == SQLITE_OK &&
+        sqlite3_bind_int64(stmt, 3, (sqlite3_int64)now) == SQLITE_OK) {
+        found = sqlite3_step(stmt) == SQLITE_ROW;
+    }
+    sqlite3_finalize(stmt);
+    free(canon);
+    return found;
+}
+
 int qso_log_export_adif(const char *path) {
     sqlite3_stmt *stmt;
     int           n = 0;
