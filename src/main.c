@@ -154,7 +154,11 @@ int main(void) {
     mfk_init();
     vol_init();
     styles_init((themes_t)param_i_get(cfg.ui.theme()));
-    time_server_init(param_i_get(cfg.ui.ntp_server()));
+    {
+        char ntp_custom[TIME_SERVER_HOST_MAX];
+        param_t_get_into(cfg.ntp_custom(), ntp_custom, sizeof(ntp_custom));
+        time_server_init(param_i_get(cfg.ui.ntp_server()), ntp_custom);
+    }
 
     radio_init();
     audio_mixer_setup(x6100_control_get_base_ver());

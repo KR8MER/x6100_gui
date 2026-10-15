@@ -15,7 +15,9 @@
 
 extern "C" {
 #include "../audio.h"
+#include "../msg.h"
 #include "../radio.h"
+#include "../textarea_window.h"
 }
 #include "../time_server.h"
 
@@ -210,8 +212,61 @@ static void make_time(SettingsPage &page) {
 
 /***** TIME SERVER *****/
 
+static lv_obj_t *time_server_dd;     // the dropdown, while the page is shown
+static int32_t   time_server_prev;   // the choice before Custom was picked
+
+static void time_server_focus_back(void) {
+    if (time_server_dd) {
+        lv_group_focus_obj(time_server_dd);
+    }
+}
+
+static bool custom_host_ok(void) {
+    const char *host = textarea_window_get();
+
+    if (!time_server_valid_host(host)) {
+        msg_update_text_fmt("A host name or address: letters, digits, dots and dashes");
+        return false;   // keep the window open to correct it
+    }
+    cfg.ntp_custom()->set(host);
+    time_server_set_custom(host);
+    time_server_prev = TIME_SERVER_CUSTOM;
+    time_server_apply(TIME_SERVER_CUSTOM);
+    time_server_focus_back();
+    return true;
+}
+
+static bool custom_host_cancel(void) {
+    cfg.ui.ntp_server()->set(time_server_prev);
+    if (time_server_dd) {
+        lv_dropdown_set_selected(time_server_dd, time_server_prev);
+    }
+    time_server_focus_back();
+    return true;
+}
+
 static void time_server_changed(void) {
-    time_server_apply(param_i_get(cfg.ui.ntp_server()));
+    int32_t index = cfg.ui.ntp_server()->get();
+
+    if (index == TIME_SERVER_CUSTOM) {
+        std::string host = cfg.ntp_custom()->get();
+
+        textarea_window_open_w_label(custom_host_ok, custom_host_cancel, "Time server");
+        lv_obj_t *text = textarea_window_text();
+        lv_textarea_set_accepted_chars(text, TIME_SERVER_HOST_CHARS);
+        lv_textarea_set_max_length(text, TIME_SERVER_HOST_MAX - 1);
+        textarea_window_set(host.c_str());
+        lv_group_focus_obj(text);
+        return;
+    }
+    time_server_prev = index;
+    time_server_apply(index);
+}
+
+/* Settings closed while the host is being typed: drop the window with it */
+static void time_server_deleted(lv_event_t *e) {
+    time_server_dd = NULL;
+    textarea_window_close();
 }
 
 static void make_time_server(SettingsPage &page) {
@@ -220,6 +275,9 @@ static void make_time_server(SettingsPage &page) {
                                       time_server_changed);
     lv_obj_set_size(obj, SMALL_6, 56);
     lv_obj_set_grid_cell(obj, LV_GRID_ALIGN_START, 1, 6, LV_GRID_ALIGN_CENTER, page.row, 1);
+    lv_obj_add_event_cb(obj, time_server_deleted, LV_EVENT_DELETE, NULL);
+    time_server_dd   = obj;
+    time_server_prev = cfg.ui.ntp_server()->get();
     page.row++;
 }
 

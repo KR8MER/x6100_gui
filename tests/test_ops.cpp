@@ -3,6 +3,7 @@
 extern "C" {
 #include "../src/cockpit.h"
 #include "../src/hunt_target.h"
+#include "../src/time_server.h"
 #include "../src/log_rules.h"
 #include "../src/pota_spots.h"
 }
@@ -130,4 +131,24 @@ TEST_CASE("A busy feed keeps the newest spots, not the first ones listed", "[pot
     REQUIRE(pota_spots_parse(json, spots, 2) == 2);
     CHECK(std::string(spots[0].activator) == "K1NEW");
     CHECK(std::string(spots[1].activator) == "K1MID");
+}
+
+TEST_CASE("A typed time server must be a plain host name or address", "[ntp]") {
+    CHECK(time_server_valid_host("time.nist.gov"));
+    CHECK(time_server_valid_host("ntp1"));
+    CHECK(time_server_valid_host("192.168.1.10"));
+    CHECK(time_server_valid_host("my-pi.local"));
+
+    /* It goes on a command line: nothing that a shell would act on */
+    CHECK_FALSE(time_server_valid_host(""));
+    CHECK_FALSE(time_server_valid_host(NULL));
+    CHECK_FALSE(time_server_valid_host("-q"));
+    CHECK_FALSE(time_server_valid_host("pool.ntp.org;reboot"));
+    CHECK_FALSE(time_server_valid_host("a b"));
+    CHECK_FALSE(time_server_valid_host("$(reboot)"));
+    CHECK_FALSE(time_server_valid_host("host."));
+    CHECK_FALSE(time_server_valid_host(".host"));
+    CHECK_FALSE(time_server_valid_host("a..b"));
+    CHECK_FALSE(time_server_valid_host(std::string(TIME_SERVER_HOST_MAX, 'a').c_str()));
+    CHECK(time_server_valid_host(std::string(TIME_SERVER_HOST_MAX - 1, 'a').c_str()));
 }
