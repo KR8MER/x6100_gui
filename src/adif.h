@@ -19,4 +19,8 @@ void adif_log_close(adif_log l);
 
 void adif_add_qso(adif_log l, qso_log_record_t qso);
 
+/* One QSO as an ADIF record ("<CALL:…>…<EOR>"), written exactly as the file
+ * export writes it. The caller frees it; NULL when out of memory. */
+char *adif_record_string(const qso_log_record_t *qso);
+
 int adif_read(const char * path, qso_log_record_t ** records);

@@ -78,6 +78,25 @@ int qso_log_recent(qso_log_record_t *out, int max);
  * Returns the QSO count, or -1 on error. */
 int qso_log_export_adif(const char *path);
 
+/* A QSO with the row id that names it in the log */
+typedef struct {
+    int64_t          id;
+    qso_log_record_t rec;
+} qso_log_row_t;
+
+/* QSOs not yet uploaded to the QRZ Logbook, oldest first, at most max.
+ * Returns how many were written to out, -1 on error. */
+int qso_log_qrz_unsent(qso_log_row_t *out, int max);
+
+/* How many QSOs are not yet uploaded to QRZ, -1 on error */
+int qso_log_qrz_unsent_count(void);
+
+/* The QSO logged at this time with this call */
+bool qso_log_find(time_t ts, const char *remote_call, qso_log_row_t *out);
+
+/* Uploaded to QRZ (or QRZ already had it) */
+bool qso_log_mark_qrz_sent(int64_t id);
+
 /* True when a QSO with this POTA/SOTA reference is already in the log */
 bool qso_log_has_ref(const char *ref);
 

@@ -107,6 +107,24 @@ void adif_add_qso(adif_log l, qso_log_record_t qso)
     fflush(l->fd);
 }
 
+char *adif_record_string(const qso_log_record_t *qso) {
+    struct adif_log_s l;
+    char             *buf = NULL;
+    size_t            len = 0;
+
+    /* the same writer as the file export, into memory */
+    l.fd = open_memstream(&buf, &len);
+    if (!l.fd) {
+        return NULL;
+    }
+    adif_add_qso(&l, *qso);
+    if (fclose(l.fd) != 0 || !buf || len == 0) {
+        free(buf);
+        return NULL;
+    }
+    return buf;
+}
+
 int adif_read(const char * path, qso_log_record_t ** records) {
     char * line = NULL;
     size_t len = 0;
