@@ -32,6 +32,7 @@
 #include "cw.h"
 #include "pubsub_ids.h"
 #include "scheduler.h"
+#include "atu_log.h"
 
 /*********************
  *      DEFINES
@@ -932,6 +933,7 @@ static bool radio_tick() {
             case RADIO_ATU_RUN:
                 if (pack->flag.atu_status && !pack->flag.tx) {
                     cfg_atu_save_network(pack->atu_params);
+                    atu_log_tuned(pack->atu_params);
                     WITH_RADIO_LOCK(x6100_control_atu_tune(false));
                     param_i_set(cfg.atu_enabled(), true);
                     recover_processing_audio_inputs();

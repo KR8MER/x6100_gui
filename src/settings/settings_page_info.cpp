@@ -1,6 +1,7 @@
 #include "settings_widgets.h"
 
 extern "C" {
+#include "../atu_log.h"
 #include "../main.h"
 #include "../splash.h"
 #include "../radio.h"
@@ -29,4 +30,17 @@ void make_info_page(SettingsPage &page) {
                           "App version: %s\nBASE version: %s\n"
                           "Built on the X6100 GUI by R1CBU and OpenX6100",
                           BRAND_CALL, BRAND_EDITION, VERSION, x6100_control_get_fw_version_str());
+
+    /* The tuner's setting for this frequency, raw: see atu_log.h */
+    lv_obj_t *tuner = lv_label_create(grid);
+    lv_obj_set_style_text_line_space(tuner, 20, LV_PART_MAIN);
+    lv_obj_align_to(tuner, label, LV_ALIGN_OUT_BOTTOM_LEFT, 0, 30);
+    if (cfg_atu_is_loaded()) {
+        char bits[40];
+        atu_log_format_bits(cfg_atu_get_network(), bits, sizeof(bits));
+        lv_label_set_text_fmt(tuner, "Tuner here: 0x%08X\n%s\nEvery tune is logged to atu_log.csv",
+                              (unsigned)cfg_atu_get_network(), bits);
+    } else {
+        lv_label_set_text(tuner, "Tuner here: no saved tune\nEvery tune is logged to atu_log.csv");
+    }
 }
