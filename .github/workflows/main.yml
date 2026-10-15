@@ -124,6 +124,15 @@ jobs:
         }
         cd AetherX6100Buildroot/build
         if [ "${{ steps.system.outputs.cache-hit }}" = "true" ]; then
+          # The saved build is for this exact Buildroot revision, but the
+          # checkout just gave every config file a new time, so make would
+          # think each kconfig package (busybox, kernel, u-boot) needs
+          # configuring again from sources that were trimmed away. Its
+          # steps are all done: give every stamp one time, newer than the
+          # checkout (one time for all, so no stamp is newer than the stamp
+          # that depends on it).
+          now=$(date +%s)
+          find build -name '.stamp_*' -exec touch -d "@$now" {} +
           # Only the GUI changed: rebuild it from this checkout, then the image
           if ! { make x6100-gui-dirclean && make; }; then
             echo "::warning::The saved system build did not work; building everything"
