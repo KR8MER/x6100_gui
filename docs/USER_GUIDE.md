@@ -135,8 +135,34 @@ it is the entry being made, and below that your most recent QSOs.
 | page 2: **Park / Summit** | A POTA park (e.g. `US-1234`) or SOTA summit reference, if the other station is portable there. Filled in for you when you are hunting (below). |
 | page 2: **Export ADIF** | Writes the whole log to `qso_log.adi` on the DATA partition, with park and summit references as `SIG` / `SIG_INFO` (and `SOTA_REF`) — ready for LoTW, QRZ, the POTA site or a desktop logger. |
 | page 2: **Clear** | Clears the entry. |
+| page 3: **HamQTH Login** | Your HamQTH.com user name and password, for call sign look-up. |
+| page 3: **QRZ Key** | Your QRZ Logbook API key, for uploading QSOs to QRZ. |
+| page 3: **Upload QRZ** | Sends every QSO not yet on QRZ (up to 200 per press; the message says how many are left). |
+| page 3: **Look up** | Looks the call up on HamQTH again. |
 
 Saving the same call at the same time twice logs it once.
+
+**Call sign look-up (HamQTH).** With a HamQTH login set, entering a call looks
+it up: the name is filled in (if you have not typed one) and the station's
+QTH, country and grid show at the top right, credited to HamQTH.com. The grid
+is saved with the QSO. HamQTH is free, but you need your own account
+(register at hamqth.com). Lookups only happen when the call changes or you
+press Look up.
+
+**QRZ Logbook upload.** With a QRZ key set, each QSO you save is sent to your
+QRZ logbook straight away, and the screen says *"QRZ: uploaded"*, *"QRZ:
+already in your logbook"* or why it failed. QRZ only allows uploads with an
+**XML (or higher) subscription**; the key is in your logbook's settings on
+qrz.com. The radio never overwrites a QSO already in your QRZ logbook (so it
+cannot replace a confirmed one). **Upload QRZ** sends what has not gone yet,
+including your FT8 QSOs and anything logged before you set the key.
+
+![Log QSO page 3 after a look-up and an upload](screenshots/log_lookup_qrz.jpg)
+
+The password and key are shown only as you type them (the key afterwards as its
+last 4 characters), but they are stored in the radio's settings file,
+`params.db` on the DATA partition, which anyone with the SD card can read on a
+computer.
 
 ## 7. POTA hunting
 
@@ -166,11 +192,15 @@ tags one QSO only, matches the activator however their call is written
 never lands on an unrelated contact. QSOs imported later from an ADIF file are
 never tagged.
 
+![Hunter page 2 with the WKD mark and Alerts](screenshots/pota_alerts.jpg)
+
 **Alerts** (Hunt POTA, page 2): *Off*, *This band* or *All bands*. When on,
 the radio checks the spots every 5 minutes in the background and shows a
 message such as *"New park: K1ABC US-1234 14.062 CW"* for parks not yet in
 your log. Each activation is announced once, and nothing is fetched while the
 hunter window is open or while alerts are off. It needs Wi-Fi.
+
+![A new-park alert](screenshots/pota_alert_message.jpg)
 
 **SOTA** is not included: the SOTA API's terms require approval before
 software written with AI assistance may use it.
@@ -244,6 +274,8 @@ Time server** chooses which one:
 * **Custom…** — type any host name or address, for example a home NTP server
   or a GPS-disciplined Raspberry Pi (letters, digits, dots and dashes only)
 
+![Typing a custom time server](screenshots/time_server_custom.jpg)
+
 Picking one sets the clock from it straight away. You will see *"Clock set
 from …"*, or *"Can't reach … (Wi-Fi on?)"* if it could not be reached, in which
 case the clock is left as it was. If the time is set but cannot be saved to
@@ -278,6 +310,8 @@ DATA partition (time, antenna, frequency, the setting in hex and in bits).
 Tuning into known loads and comparing the bits is how its meaning can be
 worked out.
 
+![Settings > Info with the tuner readout](screenshots/tuner_info.jpg)
+
 **Tuner memory.** Each successful tune is remembered, per antenna and
 frequency. When you come back within 25 kHz of a remembered tune, it is put
 back at once, without tuning again. The **ATU** label in the top row shows the
@@ -301,6 +335,7 @@ The `DATA` partition on the SD card can be read and written from a computer.
 | `incoming_log.adi` | Copy an ADIF log here under this name to import it at the next boot (it is then renamed `incoming_log.adi.bak`). Imported QSOs mark worked call signs and parks. |
 | `ntp_server` | The time server you chose (written by the radio). |
 | `atu_log.csv` | One line per tune: time, antenna, frequency and the tuner's setting. |
+| `params.db` | The radio's settings, including any HamQTH password and QRZ key. |
 | `*.png` | Screenshots taken on the radio. |
 
 ## 14. Screenshots from the radio

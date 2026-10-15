@@ -26,6 +26,9 @@ changes the time the clock shows; the radio's own clock stays on UTC.
   alerts (page 2) check every 5 minutes for parks you still need.
   SOTA is not included: the SOTA API's terms require prior approval for
   AI-written software.
+* **Call sign look-up and QRZ upload** (Log QSO, page 3): with your own
+  HamQTH account, entering a call fills in name, QTH and grid; with a QRZ
+  XML subscription's logbook key, saved QSOs go to your QRZ logbook.
 * **DX cluster** (APP → page 5, needs Wi-Fi): the latest cluster spots from
   HamQTH.com with NEW/SLOT marks from your log; TUNE sets the radio up for
   the spot.
@@ -93,6 +96,14 @@ buttons. Only the colours follow the stock screen; the layout is this GUI's.
 | Log QSO | POTA hunter |
 |---|---|
 | ![Log QSO](docs/screenshots/log.jpg) | ![POTA hunter](docs/screenshots/pota_hunter.jpg) |
+
+| DX cluster | Space weather |
+|---|---|
+| ![DX cluster](docs/screenshots/dx_cluster.jpg) | ![Space weather](docs/screenshots/space_weather.jpg) |
+
+| Log QSO: look-up and QRZ upload | POTA hunter: dupe mark and alerts |
+|---|---|
+| ![Log QSO page 3](docs/screenshots/log_lookup_qrz.jpg) | ![POTA alerts](docs/screenshots/pota_alerts.jpg) |
 
 | FT8 | SWR scan |
 |---|---|
