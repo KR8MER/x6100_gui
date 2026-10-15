@@ -112,7 +112,7 @@ jobs:
 
     # Create release
     - name: Release
-      uses: softprops/action-gh-release@v2
+      uses: softprops/action-gh-release@v3
       if: startsWith(github.ref, 'refs/tags/') || inputs.tag != ''
       with:
         tag_name: ${{ env.REL_NAME }}

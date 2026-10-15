@@ -36,13 +36,13 @@ jobs:
         pwd
     # Checkout the repository to the GitHub Actions runner
     - name: Checkout GUI
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
       with:
         submodules: true
         path: x6100_gui
 
     - name: Checkout buildroot
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
       with:
         submodules: true
         repository: KR8MER/AetherX6100Buildroot
@@ -143,7 +143,7 @@ jobs:
 
     # Create release
     # - name: Release
-    #   uses: softprops/action-gh-release@v2
+    #   uses: softprops/action-gh-release@v3
     #   if: startsWith(github.ref, 'refs/tags/')
     #   with:
     #     files: AetherX6100Buildroot/build/images/sdcard.${{ github.ref_name }}.img.zip
