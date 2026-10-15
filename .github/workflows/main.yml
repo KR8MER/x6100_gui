@@ -71,6 +71,10 @@ jobs:
         sed -i "s,^X6100_GUI_SITE_METHOD = git,X6100_GUI_SITE_METHOD = local,g" AetherX6100Buildroot/br2_external/package/x6100-gui/x6100_gui.mk
         sed -i "s,^X6100_GUI_GIT_SUBMODULES,# X6100_GUI_GIT_SUBMODULES,g" AetherX6100Buildroot/br2_external/package/x6100-gui/x6100_gui.mk
 
+    # A branch name like feature/x would put a folder into the file name
+    - name: Image name
+      run: echo "IMG_NAME=${REL_NAME//\//-}" >> "$GITHUB_ENV"
+
     # Saved builds are keyed on the Buildroot revision: a GUI-only change
     # reuses them, any change to the system (packages, kernel, config) does not
     - name: Buildroot revision
@@ -152,10 +156,10 @@ jobs:
     - name: Compress image
       run: |
         mkdir -p out
-        mv AetherX6100Buildroot/build/images/sdcard.img out/sdcard.${{ env.REL_NAME }}.img
+        mv AetherX6100Buildroot/build/images/sdcard.img out/sdcard.${{ env.IMG_NAME }}.img
         cd out
-        zip sdcard.${{ env.REL_NAME }}.img.zip sdcard.${{ env.REL_NAME }}.img
-        rm sdcard.${{ env.REL_NAME }}.img
+        zip sdcard.${{ env.IMG_NAME }}.img.zip sdcard.${{ env.IMG_NAME }}.img
+        rm sdcard.${{ env.IMG_NAME }}.img
 
     # Save the system build after a full build. Per-package sources and object
     # files are dropped: every package is already installed, and its stamp
@@ -193,8 +197,8 @@ jobs:
     - name: Upload image
       uses: actions/upload-artifact@v6
       with:
-        name: sdcard.${{ env.REL_NAME }}.img.zip
-        path: out/sdcard.${{ env.REL_NAME }}.img.zip
+        name: sdcard.${{ env.IMG_NAME }}.img.zip
+        path: out/sdcard.${{ env.IMG_NAME }}.img.zip
         compression-level: 0
 
     # Create release
@@ -204,4 +208,4 @@ jobs:
       with:
         tag_name: ${{ env.REL_NAME }}
         target_commitish: ${{ github.sha }}
-        files: out/sdcard.${{ env.REL_NAME }}.img.zip
+        files: out/sdcard.${{ env.IMG_NAME }}.img.zip
