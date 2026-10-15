@@ -67,6 +67,7 @@ typedef enum {
     THEME_BLACK,
     THEME_FLAT,
     THEME_LIGHTNING,
+    THEME_FACTORY,
 } themes_t;
 
 /* Meter Color */

@@ -27,6 +27,10 @@ const uint32_t wf_palette_lightning[] = {
 #include "palettes/lightning.inc"
 };
 
+const uint32_t wf_palette_factory[] = {
+#include "palettes/factory.inc"
+};
+
 /* Skin API */
 typedef struct {
     const uint32_t *wf_palette;
@@ -146,6 +150,7 @@ static skin_t skin_default;
 static skin_t skin_flat;
 static skin_t skin_black;
 static skin_t skin_lightning;
+static skin_t skin_factory;
 
 static skin_t *skin_current;
 
@@ -161,6 +166,7 @@ static void setup_skin_default(skin_t *skin);
 static void setup_skin_flat(skin_t *skin);
 static void setup_skin_black(skin_t *skin);
 static void setup_skin_lightning(skin_t *skin);
+static void setup_skin_factory(skin_t *skin);
 
 static void set_skin(skin_t *skin);
 static void apply_tx_art(skin_t *skin);
@@ -394,6 +400,7 @@ void styles_init(themes_t theme) {
     setup_skin_flat(&skin_flat);
     setup_skin_black(&skin_black);
     setup_skin_lightning(&skin_lightning);
+    setup_skin_factory(&skin_factory);
 
     styles_set_theme(theme);
 
@@ -428,6 +435,9 @@ void styles_set_theme(themes_t theme) {
             break;
         case THEME_LIGHTNING:
             skin_current = &skin_lightning;
+            break;
+        case THEME_FACTORY:
+            skin_current = &skin_factory;
             break;
         case THEME_SIMPLE:
         default:
@@ -1399,6 +1409,156 @@ static void setup_skin_lightning(skin_t *skin) {
         LV_LOG_ERROR("Unknown msg_tiny style size");
         skin->bg_img.msg_tiny = NULL;
     }
+}
+
+/*
+ * Factory: after the look of the radio's stock firmware. Black screen, a
+ * bright green trace over a grey level grid with a green passband, a royal
+ * blue waterfall, blue readout boxes and flat teal buttons.
+ */
+static void render_flat(lv_style_t *st, lv_img_dsc_t *dsc, void **out, lv_opa_t opa, lv_coord_t border_width,
+                        lv_coord_t radius, lv_color_t top, lv_color_t bottom, lv_color_t border) {
+    lv_coord_t    w, h;
+    lv_grad_dsc_t bg = {
+        .dir         = LV_GRAD_DIR_VER,
+        .stops_count = 2,
+        .stops       = {[0] = {.color = top, .frac = 0}, [1] = {.color = bottom, .frac = 255}},
+    };
+    lv_grad_dsc_t edge = {
+        .dir         = LV_GRAD_DIR_VER,
+        .stops_count = 2,
+        .stops       = {[0] = {.color = border, .frac = 0}, [1] = {.color = border, .frac = 255}},
+    };
+
+    if (style_get_size(st, &w, &h)) {
+        render_grad_bg_with_border(w, h, dsc, opa, border_width, radius, &bg, &edge);
+        *out = dsc;
+    } else {
+        LV_LOG_ERROR("Unknown style size");
+        *out = NULL;
+    }
+}
+
+static void setup_skin_factory(skin_t *skin) {
+    static lv_img_dsc_t btn_bg_dsc;
+    static lv_img_dsc_t btn_active_dsc;
+    static lv_img_dsc_t msg_bg_dsc;
+    static lv_img_dsc_t msg_tiny_bg_dsc;
+    static lv_img_dsc_t clock_bg_dsc;
+    static lv_img_dsc_t freq_info_bg_dsc;
+    static lv_img_dsc_t s_meter_bg_dsc;
+    static lv_img_dsc_t tx_info_bg_dsc;
+    static lv_img_dsc_t dialog_bg_dsc;
+
+    // Copy default and override
+    *skin = skin_default;
+
+    lv_color_t black  = lv_color_hex(0x000000);
+    lv_color_t panel  = lv_color_hex(0x0b0d10);
+    lv_color_t edge   = lv_color_hex(0x3c4248);
+    lv_color_t trace  = lv_color_hex(0x5cff3a);
+    lv_color_t green  = lv_color_hex(0x3ee04e);
+    lv_color_t royal  = lv_color_hex(0x1f5fd6);
+    lv_color_t navy   = lv_color_hex(0x123a8a);
+    lv_color_t sky    = lv_color_hex(0x7fa6f0);
+    lv_color_t teal1  = lv_color_hex(0x1d5466);
+    lv_color_t teal2  = lv_color_hex(0x0b2632);
+    lv_color_t amber  = lv_color_hex(0xffd23f);
+    lv_color_t red    = lv_color_hex(0xff4040);
+
+    skin->wf_palette      = wf_palette_factory;
+    skin->base_text_color = lv_color_white();
+    skin->spectrum_color  = trace;
+    skin->mark_color      = green;   // passband block
+
+    skin->wf_middle_line_color     = lv_color_hex(0xd0d0d0);
+    skin->wf_middle_line_min_width = 1;
+
+    skin->accent_color       = royal;
+    skin->accent_opa         = LV_OPA_60;
+    skin->focus_border_color = lv_color_white();
+    skin->focus_fill         = false;
+
+    skin->s_meter.noise = lv_color_hex(0x1e7a1e);
+    skin->s_meter.low   = green;
+    skin->s_meter.mid   = green;
+    skin->s_meter.high  = red;
+    skin->s_meter.peak  = lv_color_white();
+
+    skin->ui.spectrum_glow_opa = LV_OPA_TRANSP;
+    skin->ui.spectrum_center   = lv_color_white();
+    skin->ui.freq_step_mark    = lv_color_white();
+    skin->ui.tx_pwr            = amber;
+    skin->ui.swr_ok            = green;
+    skin->ui.swr_ok_gray       = lv_color_hex(0xaaaaaa);
+    skin->ui.swr_warn          = amber;
+    skin->ui.swr_bad           = red;
+    skin->ui.finder.filter     = green;
+    skin->ui.finder.cursor     = lv_color_white();
+    skin->ui.chart.grid        = lv_color_hex(0x5a5a5a);
+    skin->ui.chart.label       = lv_color_white();
+    skin->ui.chart.line        = trace;
+    skin->ui.level             = green;
+
+    skin->chrome.mode_bg         = green;
+    skin->chrome.mode_text       = black;
+    skin->chrome.vfo_bg          = royal;
+    skin->chrome.vfo_text        = lv_color_white();
+    skin->chrome.badge_opa       = LV_OPA_COVER;
+    skin->chrome.bg_freq         = lv_color_hex(0x7dea7d);
+    skin->chrome.ind_text        = lv_color_hex(0x9a9a9a);
+    skin->chrome.ind_active_bg   = green;
+    skin->chrome.ind_active_text = black;
+    skin->chrome.ind_sep         = lv_color_hex(0x2a2a2a);
+    skin->chrome.readout_bg      = royal;   // like the stock VOLUME / TX POWER boxes
+
+    skin->readout_border       = 1;
+    skin->readout_border_color = sky;
+
+    /* Spectrum: black, grey level grid, green trace with a faint fill */
+    skin->ui.spectrum_bg_on     = true;
+    skin->ui.spectrum_bg_top    = black;
+    skin->ui.spectrum_bg_bottom = black;
+    skin->ui.spectrum_grid      = lv_color_hex(0x9a9a9a);
+    skin->ui.spectrum_grid_opa  = LV_OPA_70;
+    skin->spectrum_grad.on      = true;
+    skin->spectrum_grad.low     = black;
+    skin->spectrum_grad.mid     = lv_color_hex(0x061806);
+    skin->spectrum_grad.high    = lv_color_hex(0x103c10);
+    skin->spectrum_grad.line    = trace;
+    skin->spectrum_grad.peak    = lv_color_hex(0x2c5a2c);
+
+    /* Flat panels: square-ish corners, thin grey edges */
+    lv_coord_t radius = 3;
+
+    render_flat(&style.btn.base, &btn_bg_dsc, &skin->bg_img.btn, LV_OPA_COVER, 1, radius, teal1, teal2,
+                lv_color_hex(0x8fb3c4));
+    render_flat(&style.btn.base, &btn_active_dsc, &skin->btn_active_img, LV_OPA_COVER, 1, radius, royal, navy,
+                sky);
+    skin->btn_active_text = lv_color_white();
+
+    render_flat(&style.clock, &clock_bg_dsc, &skin->bg_img.clock, LV_OPA_COVER, 1, radius, panel, black, edge);
+    render_flat(&style.freq_info, &freq_info_bg_dsc, &skin->bg_img.freq_info, LV_OPA_COVER, 1, radius, panel,
+                black, edge);
+    render_flat(&style.s_meter, &s_meter_bg_dsc, &skin->bg_img.s_meter, LV_OPA_COVER, 1, radius, panel, black,
+                edge);
+    render_flat(&style.tx_info, &tx_info_bg_dsc, &skin->bg_img.tx_info, LV_OPA_COVER, 1, radius, panel, black,
+                edge);
+    render_flat(&style.msg, &msg_bg_dsc, &skin->bg_img.msg, LV_OPA_90, 1, radius, teal1, teal2, edge);
+    render_flat(&style.msg_tiny, &msg_tiny_bg_dsc, &skin->bg_img.msg_tiny, LV_OPA_COVER, 1, radius, teal1, teal2,
+                edge);
+    render_flat(&style.dialog.base, &dialog_bg_dsc, &skin->bg_img.dialog, 255 * 95 / 100, 1, radius,
+                lv_color_hex(0x10151b), black, edge);
+
+    skin->panel.bg_grad      = (lv_grad_dsc_t){.dir = LV_GRAD_DIR_VER, .stops_count = 2,
+                                               .stops = {[0] = {.color = panel, .frac = 0},
+                                                         [1] = {.color = black, .frac = 255}}};
+    skin->panel.border_grad  = (lv_grad_dsc_t){.dir = LV_GRAD_DIR_VER, .stops_count = 2,
+                                               .stops = {[0] = {.color = edge, .frac = 0},
+                                                         [1] = {.color = edge, .frac = 255}}};
+    skin->panel.opa          = LV_OPA_90;
+    skin->panel.border_width = 1;
+    skin->panel.radius       = radius;
 }
 
 static void set_skin(skin_t *skin) {

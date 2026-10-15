@@ -61,6 +61,15 @@ If you like the original look, pick Simple (or Black or Flat) in Settings →
 Theme; the cockpits, log, POTA hunter, time zones and time server all work the
 same in every theme.
 
+**Factory** (Settings → Theme → Factory) is styled after the radio's stock
+firmware: a black screen, a bright green trace over a grey level grid with a
+green passband block, a royal blue waterfall, blue readout boxes and flat teal
+buttons. Only the colours follow the stock screen; the layout is this GUI's.
+
+| Factory | Factory, transmitting |
+|---|---|
+| ![Home screen, Factory theme](docs/screenshots/home_factory.jpg) | ![Transmitting, Factory theme](docs/screenshots/transmit_factory.jpg) |
+
 | Transmitting | Settings |
 |---|---|
 | ![Transmitting](docs/screenshots/transmit.jpg) | ![Settings dialog](docs/screenshots/settings.jpg) |
