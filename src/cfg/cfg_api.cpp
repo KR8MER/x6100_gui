@@ -147,6 +147,7 @@ static ParamInt *cfg_clock_power_timeout(void) { return param_ref<ParamInt>(cfg_
 static ParamInt *cfg_clock_tx_timeout(void) { return param_ref<ParamInt>(cfg_instance().p_clock_tx_timeout); }
 static ParamInt *cfg_clock_tz(void) { return param_ref<ParamInt>(cfg_instance().p_clock_tz); }
 static ParamInt *cfg_clock_tz2(void) { return param_ref<ParamInt>(cfg_instance().p_clock_tz2); }
+static ParamInt *cfg_ntp_server(void) { return param_ref<ParamInt>(cfg_instance().p_ntp_server); }
 static ParamInt *cfg_spectrum_beta(void) { return param_ref<ParamInt>(cfg_instance().p_spectrum_beta); }
 static ParamInt *cfg_spectrum_peak(void) { return param_ref<ParamInt>(cfg_instance().p_spectrum_peak); }
 static ParamInt *cfg_spectrum_peak_hold(void) { return param_ref<ParamInt>(cfg_instance().p_spectrum_peak_hold); }
@@ -282,6 +283,7 @@ extern "C" const cfg_refs_t cfg = {
         .clock_tx_timeout = &cfg_clock_tx_timeout,
         .clock_tz = &cfg_clock_tz,
         .clock_tz2 = &cfg_clock_tz2,
+        .ntp_server = &cfg_ntp_server,
 
         .theme = &cfg_theme,
         .meter_color = &cfg_meter_color,

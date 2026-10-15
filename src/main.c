@@ -22,6 +22,7 @@
 #include "main_screen.h"
 #include "styles.h"
 #include "splash.h"
+#include "time_server.h"
 #include "radio.h"
 #include "dsp.h"
 #include "util.h"
@@ -153,6 +154,7 @@ int main(void) {
     mfk_init();
     vol_init();
     styles_init((themes_t)param_i_get(cfg.ui.theme()));
+    time_server_init(param_i_get(cfg.ui.ntp_server()));
 
     radio_init();
     audio_mixer_setup(x6100_control_get_base_ver());

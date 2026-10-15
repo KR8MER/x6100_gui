@@ -15,7 +15,7 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE _GNU_SOURCE)
 
 target_sources(${PROJECT_NAME} PUBLIC
     main.c main_screen.c
-    styles.c splash.c spectrum.c spectrum_glow.c tz_display.c theme_lightning.c radio.c
+    styles.c splash.c spectrum.c spectrum_glow.c tz_display.c time_server.c theme_lightning.c radio.c
     cockpit.c cockpit_rules.c dialog_log.c log_rules.c hunt_target.c dialog_hunter.c pota_spots.c cell_columns.c dsp.cpp util.cpp
     app_ports.cpp
     waterfall.c rotary.cpp keyboard.c kbd_rollover.c encoder.c

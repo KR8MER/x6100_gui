@@ -27,6 +27,7 @@
 #include "../common/math.h"
 #include "../settings_types.h"
 #include "../tz_display.h"
+#include "../time_server.h"
 #include "computed_parameter.h"
 #include "encoder_bind_types.h"
 #include "parameter.h"
@@ -261,6 +262,8 @@ class SettingsManager {
     Parameter<int32_t> p_clock_tz{"clock_tz", 0, 0, TZ_ZONE_COUNT - 1,
         StorageType::GLOBAL, pending_writes_, &global_params_};
     Parameter<int32_t> p_clock_tz2{"clock_tz2", 0, 0, TZ_ZONE_COUNT,
+        StorageType::GLOBAL, pending_writes_, &global_params_};
+    Parameter<int32_t> p_ntp_server{"ntp_server", 0, 0, TIME_SERVER_COUNT - 1,
         StorageType::GLOBAL, pending_writes_, &global_params_};
 
     // Spectrum (migrated legacy fields)

@@ -17,6 +17,8 @@ extern "C" {
 #include "../audio.h"
 #include "../radio.h"
 }
+#include "../time_server.h"
+
 
 /***** DATETIME *****/
 
@@ -203,6 +205,21 @@ static void make_time(SettingsPage &page) {
     lv_obj_add_event_cb(obj, datetime_update_cb, LV_EVENT_VALUE_CHANGED, NULL);
     lv_obj_add_event_cb(obj, datetime_set_rtc_cb, LV_EVENT_FOCUSED, NULL);
 
+    page.row++;
+}
+
+/***** TIME SERVER *****/
+
+static void time_server_changed(void) {
+    time_server_apply(param_i_get(cfg.ui.ntp_server()));
+}
+
+static void make_time_server(SettingsPage &page) {
+    page.label("Time server");
+    lv_obj_t *obj = page.dropdown_int(page.grid, *cfg.ui.ntp_server(), time_server_dropdown_options(), nullptr,
+                                      time_server_changed);
+    lv_obj_set_size(obj, SMALL_6, 56);
+    lv_obj_set_grid_cell(obj, LV_GRID_ALIGN_START, 1, 6, LV_GRID_ALIGN_CENTER, page.row, 1);
     page.row++;
 }
 
@@ -604,6 +621,7 @@ void make_general_page(SettingsPage &page) {
 
     make_date(page);
     make_time(page);
+    make_time_server(page);
     page.delimiter();
 
     make_display(page);
