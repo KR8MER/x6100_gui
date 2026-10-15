@@ -89,7 +89,7 @@ static action_items_t long_action_items[] = {
     {.label = " Digital cockpit",  .action = ACTION_COCKPIT_DIGITAL},
     {.label = " RTTY cockpit",     .action = ACTION_COCKPIT_RTTY },
     {.label = " Log QSO",          .action = ACTION_APP_LOG      },
-    {.label = " POTA/SOTA hunter", .action = ACTION_APP_HUNTER   },
+    {.label = " POTA hunter",      .action = ACTION_APP_HUNTER   },
     {.label = NULL,                .action = ACTION_NONE        }
 };
 

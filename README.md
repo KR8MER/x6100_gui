@@ -6,7 +6,7 @@ cyan edges, a glowing scope-style spectrum, gradient buttons and menus, a red
 flash on key-down, and a KR8MER boot logo and splash. On start-up a bolt of
 lightning strikes the logo, a spark runs along it and a second bolt lands as you
 are greeted by your callsign; the bolts are drawn fresh every boot. Lightning is
-the default on a fresh install. Settings → UI → Clock time zone (and an optional second zone)
+the default on a fresh install. Settings → Interface → Clock time zone (and an optional second zone)
 changes the time the clock shows; the radio's own clock stays on UTC.
 
 **Operating, after [Nexus](https://github.com/kd9taw/Nexus):**
@@ -26,6 +26,9 @@ changes the time the clock shows; the radio's own clock stays on UTC.
   SOTA is not included: the SOTA API's terms require prior approval for
   AI-written software. Images are on this fork's
 [Releases](https://github.com/KR8MER/x6100_gui/releases) page.
+
+**[User guide](docs/USER_GUIDE.md)**: installing, themes, cockpits, logging,
+POTA hunting, time zones, the time server, GPS and the tuner.
 
 Built on the X6100 GUI by R1CBU and the OpenX6100 contributors.
 
@@ -96,7 +99,7 @@ The start-up splash, frame by frame:
 
 These are drawn off the radio with this firmware's own theme and drawing code
 and sample data (the call signs, spots and log entries are examples). To take
-real ones, set a long press (Settings → UI) to Screenshot; they are saved to the
+real ones, set a long press (Settings → Interface) to Screenshot; they are saved to the
 DATA partition.
 
 
@@ -104,8 +107,8 @@ This is part of an alternative firmware for X6100 using the LVGL library
 
 ## Installing
 
-Open [Releases](https://github.com/gdyuldin/x6100_gui/releases/latest) page and download `sdcard.img` file (in Assets section). With balenaEtcher or Rufus
-burn img file to microSD card. Insert card to the transceiver and boot it.
+Open the [Releases](https://github.com/KR8MER/x6100_gui/releases/latest) page and download `sdcard.<version>.img.zip` (in the Assets section). Unzip it, and with balenaEtcher or Rufus
+burn the img file to a microSD card. Insert the card in the transceiver and boot it.
 
 ## Importing ADI log
 
@@ -129,8 +132,8 @@ Application stores FT8/FT4 QSOs to the `ft_log.adi` file on the `DATA` partition
 ```
 mkdir x6100
 cd x6100
-git clone https://github.com/gdyuldin/AetherX6100Buildroot
-git clone https://github.com/gdyuldin/x6100_gui
+git clone https://github.com/KR8MER/AetherX6100Buildroot
+git clone https://github.com/KR8MER/x6100_gui
 ```
 
 * Build buildroot
