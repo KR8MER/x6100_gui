@@ -200,13 +200,13 @@ static qso_log_mode_t log_mode(const dx_spot_t *s) {
     }
 }
 
-/* NEW: never worked; "slot": worked, but not on this band and mode */
+/* NEW: never worked; SLOT: worked, but not on this band and mode */
 static const char *worked_mark(const dx_spot_t *s) {
     switch (qso_log_search_worked(s->call, log_mode(s), qso_log_freq_to_band(s->freq_hz))) {
         case SEARCH_WORKED_NO:
             return "NEW";
         case SEARCH_WORKED_YES:
-            return "slot";
+            return "SLOT";
         default:
             return "";
     }
