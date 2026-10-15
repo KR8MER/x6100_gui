@@ -1,7 +1,7 @@
 # KR8MER Lightning Edition — User Guide
 
 This guide covers what the KR8MER Lightning Edition adds to the X6100 LVGL GUI
-(R1CBU and the OpenX6100 contributors), as of **v1.0.2-kr8mer.6**. Everything
+(R1CBU and the OpenX6100 contributors), as of **v1.0.2-kr8mer.7**. Everything
 the original GUI does is still here and works as before; this guide only
 explains the parts that are new or different.
 
@@ -14,12 +14,14 @@ Contents:
 5. [Cockpits](#5-cockpits)
 6. [Logging QSOs](#6-logging-qsos)
 7. [POTA hunting](#7-pota-hunting)
-8. [Clock and time zones](#8-clock-and-time-zones)
-9. [Setting the time: internet time server and GPS](#9-setting-the-time-internet-time-server-and-gps)
-10. [The tuner](#10-the-tuner)
-11. [Files on the DATA partition](#11-files-on-the-data-partition)
-12. [Screenshots from the radio](#12-screenshots-from-the-radio)
-13. [Troubleshooting](#13-troubleshooting)
+8. [DX cluster](#8-dx-cluster)
+9. [Space weather](#9-space-weather)
+10. [Clock and time zones](#10-clock-and-time-zones)
+11. [Setting the time: internet time server and GPS](#11-setting-the-time-internet-time-server-and-gps)
+12. [The tuner](#12-the-tuner)
+13. [Files on the DATA partition](#13-files-on-the-data-partition)
+14. [Screenshots from the radio](#14-screenshots-from-the-radio)
+15. [Troubleshooting](#15-troubleshooting)
 
 ---
 
@@ -33,7 +35,7 @@ Contents:
 
 On the first boot a `DATA` partition is created on the card. Your settings,
 your log and anything you copy for the radio live there, and it is kept when
-you write a newer image (see [Files on the DATA partition](#11-files-on-the-data-partition)).
+you write a newer image (see [Files on the DATA partition](#13-files-on-the-data-partition)).
 
 ## 2. Start-up
 
@@ -60,14 +62,14 @@ change with the page you are on; the leftmost one names the page, for example
 
 | Front-panel key | Opens |
 |---|---|
-| **APP** | page 1: the cockpits (Phone, CW, Digital, RTTY) · page 2: RTTY, FT8, SWR Scan, GPS · page 3: Recorder, QTH, Callsign, Settings · page 4: WiFi, Bluetooth, **Log QSO**, **Hunt POTA** |
+| **APP** | page 1: the cockpits (Phone, CW, Digital, RTTY) · page 2: RTTY, FT8, SWR Scan, GPS · page 3: Recorder, QTH, Callsign, Settings · page 4: WiFi, Bluetooth, **Log QSO**, **Hunt POTA** · page 5: **DX Cluster**, **Space Weather** |
 | **GEN**, **KEY**, **MSG**, **DFN**, **DFL** | as in the original GUI |
 
 **Long presses.** Each front-panel key (GEN, APP, KEY, MSG, DFN, DFL) can be
 given a long-press action in **Settings → Interface**. As well as the original
 choices (Screenshot, Recorder, Mute, Voice mode, Battery info, the APP
 windows), you can choose **Phone cockpit**, **CW cockpit**, **Digital
-cockpit**, **RTTY cockpit**, **Log QSO** and **POTA hunter** — handy for
+cockpit**, **RTTY cockpit**, **Log QSO**, **POTA hunter**, **DX cluster** and **Space weather** — handy for
 getting to the log with one press.
 
 Settings has four tabs: **General**, **Interface**, **Voice** and **Info**.
@@ -144,12 +146,15 @@ Wi-Fi.
 
 ![POTA hunter](screenshots/pota_hunter.jpg)
 
-Each row shows frequency, mode, activator, park reference, **NEW** if that
-park is not yet in your log, how long ago it was spotted, and the park's name.
+Each row shows frequency, mode, activator, park reference, a mark, how long
+ago it was spotted, and the park's name. The mark is **NEW** for a park not yet
+in your log, and **WKD** when you have already logged that activator at that
+park today (UTC) — POTA counts one contact per activator, park and day, so a
+second one would be a dupe.
 
 | Button | Does |
 |---|---|
-| **Refresh** | Fetches the spots again. The list is refreshed at most every 90 seconds, and only while the window is open. |
+| **Refresh** | Fetches the spots again. While the window is open the list is refreshed every 90 seconds. |
 | **Band: This / All** | Only spots on the band you are on, or all bands. |
 | mode filter | All modes, CW, Phone or Data. |
 | **HUNT** | Pick a spot with the knob, then HUNT: the radio tunes to it, enters the right cockpit (CW, Phone or Digital; FT8 or FT4 to match the spot) and remembers the activator and park. |
@@ -161,10 +166,56 @@ tags one QSO only, matches the activator however their call is written
 never lands on an unrelated contact. QSOs imported later from an ADIF file are
 never tagged.
 
+**Alerts** (Hunt POTA, page 2): *Off*, *This band* or *All bands*. When on,
+the radio checks the spots every 5 minutes in the background and shows a
+message such as *"New park: K1ABC US-1234 14.062 CW"* for parks not yet in
+your log. Each activation is announced once, and nothing is fetched while the
+hunter window is open or while alerts are off. It needs Wi-Fi.
+
 **SOTA** is not included: the SOTA API's terms require approval before
 software written with AI assistance may use it.
 
-## 8. Clock and time zones
+## 8. DX cluster
+
+**DX Cluster** (APP → page 5) lists the latest DX cluster spots — stations
+other operators have just heard — from HamQTH.com. It needs Wi-Fi; no account
+is needed.
+
+![DX cluster](screenshots/dx_cluster.jpg)
+
+Each row shows frequency, mode (CW, SSB or DIGI as spotted), the DX station,
+its country, a mark, how long ago it was spotted, and the spotter's comment.
+The mark is **NEW** if you have never logged that station, **SLOT** if you
+have, but not on this band and mode, and blank if you have.
+
+| Button | Does |
+|---|---|
+| **Refresh** | Fetches again. The list also refreshes by itself every 30 seconds while the window is open; HamQTH asks for no more than one request every 15 seconds, so Refresh waits if pressed sooner. |
+| **Band: This / All** | Only spots on the band you are on, or all bands. |
+| mode filter | All modes, CW, Phone or Data. |
+| **TUNE** | Pick a spot with the knob, then TUNE: the radio tunes to it and enters the CW or Phone cockpit for CW and SSB spots, or the Digital cockpit with FT8 or FT4 when the comment says which. Other spots are just tuned. |
+
+Spots are data provided by HamQTH.com.
+
+## 9. Space weather
+
+**Space Weather** (APP → page 5) shows the numbers that decide HF conditions,
+from NOAA's Space Weather Prediction Center:
+
+![Space weather](screenshots/space_weather.jpg)
+
+* **Solar flux** (10.7 cm, in sfu) — higher generally means the higher bands
+  open.
+* **Planetary K index** — geomagnetic activity, 0 to 9, with NOAA's storm
+  level when there is one (G1 Minor from Kp 5 up to G5 Extreme at Kp 9).
+  High K means noisy, unsettled bands.
+* the running **A index**, and the highest Kp of the last 24 hours.
+
+Each value shows its time (UTC). The data is kept for 15 minutes; **Refresh**
+fetches again (at most once a minute). Data: NOAA SWPC, public domain; NOAA
+does not endorse this radio.
+
+## 10. Clock and time zones
 
 The radio's own clock always runs on UTC (FT8 and your log need that). What
 the clock on screen shows is up to you, in **Settings → Interface**:
@@ -181,7 +232,7 @@ Moscow, India, China, Japan, Sydney, Auckland, Brazil and South Africa.
 Daylight saving time changes by itself for the US/Canada, Europe, Australia
 and New Zealand rules.
 
-## 9. Setting the time: internet time server and GPS
+## 11. Setting the time: internet time server and GPS
 
 **Internet time.** When the radio joins Wi-Fi it sets its clock from an
 internet time server and keeps it right from then on. **Settings → General →
@@ -190,10 +241,13 @@ Time server** chooses which one:
 * **Default** — time.nist.gov on connect, then the pool.ntp.org servers
 * time.nist.gov, time.google.com, time.cloudflare.com
 * the North America, Europe, Asia or Oceania pool
+* **Custom…** — type any host name or address, for example a home NTP server
+  or a GPS-disciplined Raspberry Pi (letters, digits, dots and dashes only)
 
 Picking one sets the clock from it straight away. You will see *"Clock set
 from …"*, or *"Can't reach … (Wi-Fi on?)"* if it could not be reached, in which
-case the clock is left as it was.
+case the clock is left as it was. If the time is set but cannot be saved to
+the radio's clock chip, it says so (the time is then lost at power-off).
 
 **GPS.** The X6100 has no GPS receiver inside. A USB GPS that shows up as
 `/dev/ttyACM0` (most u-blox USB dongles do) is picked up by the radio's time
@@ -204,7 +258,7 @@ Wi-Fi, for FT8 especially.
 **By hand.** Settings → General → *Day, Month, Year* and *Hour, Min, Sec* set
 the clock directly (in UTC).
 
-## 10. The tuner
+## 12. The tuner
 
 **What the radio reports.** While you transmit, the top block shows output
 power and SWR. The base board reports SWR and power (and ALC) to the GUI.
@@ -216,6 +270,13 @@ of its relays. Xiegu has not published how that code maps to inductor and
 capacitor values, so it cannot be shown as microhenries or picofarads. SWR is
 a single number: it tells you how good the match is, not what the impedance
 is.
+
+**The raw setting.** What the radio can show, it does: after each tune the
+screen says *"Tuned: network 0x…"*, **Settings → Info** shows the setting saved
+for the frequency you are on, and every tune is added to `atu_log.csv` on the
+DATA partition (time, antenna, frequency, the setting in hex and in bits).
+Tuning into known loads and comparing the bits is how its meaning can be
+worked out.
 
 **Tuner memory.** Each successful tune is remembered, per antenna and
 frequency. When you come back within 25 kHz of a remembered tune, it is put
@@ -229,7 +290,7 @@ which shows where an antenna is resonant and how wide its usable range is:
 
 ![SWR scan](screenshots/swr_scan.jpg)
 
-## 11. Files on the DATA partition
+## 13. Files on the DATA partition
 
 The `DATA` partition on the SD card can be read and written from a computer.
 
@@ -239,14 +300,15 @@ The `DATA` partition on the SD card can be read and written from a computer.
 | `ft_log.adi` | FT8/FT4 QSOs, written as they are made (as in the original GUI). |
 | `incoming_log.adi` | Copy an ADIF log here under this name to import it at the next boot (it is then renamed `incoming_log.adi.bak`). Imported QSOs mark worked call signs and parks. |
 | `ntp_server` | The time server you chose (written by the radio). |
+| `atu_log.csv` | One line per tune: time, antenna, frequency and the tuner's setting. |
 | `*.png` | Screenshots taken on the radio. |
 
-## 12. Screenshots from the radio
+## 14. Screenshots from the radio
 
 Give a front-panel key a **Screenshot** long press (Settings → Interface), and
 a long press saves the screen as a PNG file on the DATA partition.
 
-## 13. Troubleshooting
+## 15. Troubleshooting
 
 * **The splash looks plain, or has no lightning.** The animated splash is in
   v1.0.2-kr8mer.5 and later; check the version on the splash's bottom line.

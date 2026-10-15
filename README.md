@@ -20,11 +20,20 @@ changes the time the clock shows; the radio's own clock stays on UTC.
   the radio. Same log as FT8. Export ADIF writes the whole log to
   `qso_log.adi` on the DATA partition, with POTA references as `SIG`/`SIG_INFO`.
 * **POTA hunter** (Hunt POTA button, needs Wi-Fi): live activator spots,
-  filtered by band and mode, with NEW on parks not yet in your log. HUNT tunes,
-  opens the right cockpit, and tags your next QSO with that activator with the
-  park. Spots are only read, only while the window is open, at most every 90 s.
+  filtered by band and mode, with NEW on parks not yet in your log and WKD on
+  activators already logged at that park today. HUNT tunes, opens the right
+  cockpit, and tags your next QSO with that activator with the park. Optional
+  alerts (page 2) check every 5 minutes for parks you still need.
   SOTA is not included: the SOTA API's terms require prior approval for
-  AI-written software. Images are on this fork's
+  AI-written software.
+* **DX cluster** (APP → page 5, needs Wi-Fi): the latest cluster spots from
+  HamQTH.com with NEW/SLOT marks from your log; TUNE sets the radio up for
+  the spot.
+* **Space weather** (APP → page 5): solar flux, K index and NOAA storm level
+  from NOAA SWPC.
+* **Tuner readout**: each tune's raw relay setting is shown and logged to
+  `atu_log.csv`, since Xiegu has not published what it means. Images are on
+  this fork's
 [Releases](https://github.com/KR8MER/x6100_gui/releases) page.
 
 **[User guide](docs/USER_GUIDE.md)**: installing, themes, cockpits, logging,
@@ -33,7 +42,7 @@ POTA hunting, time zones, the time server, GPS and the tuner.
 Built on the X6100 GUI by R1CBU and the OpenX6100 contributors.
 
 **Time:** Settings → General → Time server picks the internet time server
-(NIST, Google, Cloudflare or a regional pool); the clock is set from it at once
+(NIST, Google, Cloudflare, a regional pool, or one you type in); the clock is set from it at once
 and on every Wi-Fi connect. The X6100 has no GPS receiver inside, but a USB GPS
 (one that shows up as `/dev/ttyACM0`, as most u-blox dongles do) is used by the
 radio's time daemon whatever server is chosen, and its fix shows in APP → GPS.
