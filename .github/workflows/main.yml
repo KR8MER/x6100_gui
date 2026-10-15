@@ -93,7 +93,7 @@ jobs:
       uses: actions/cache/restore@v5
       with:
         path: AetherX6100Buildroot/build
-        key: br-system-v1-${{ steps.br.outputs.rev }}
+        key: br-system-v2-${{ steps.br.outputs.rev }}
 
     # Ccache
     - name: Ccache cache files
@@ -166,8 +166,15 @@ jobs:
       if: steps.build.outputs.fresh == 'true'
       run: |
         cd AetherX6100Buildroot/build
+        # Kept too: what the steps make runs on every build (target-finalize)
+        # read from a package's own folder. busybox lists its shells from its
+        # .config, python3 compiles the target's .py files with Lib/compileall.
+        # (linux runs depmod only when its .config is there; with it trimmed
+        # that step is skipped, and the saved modules.dep is the one it made.)
         find build -mindepth 2 -maxdepth 2 ! -path 'build/buildroot-config/*' \
-            ! -name '.stamp_*' ! -name '.files-list*' ! -name '.br_*' -exec rm -rf {} +
+            ! -name '.stamp_*' ! -name '.files-list*' ! -name '.br_*' \
+            ! -path 'build/busybox-*/.config' ! -path 'build/python3-*/Lib' \
+            -exec rm -rf {} +
         rm -f images/rootfs.* images/sdcard*
         du -sh host target images build
 
@@ -176,7 +183,7 @@ jobs:
       uses: actions/cache/save@v5
       with:
         path: AetherX6100Buildroot/build
-        key: br-system-v1-${{ steps.br.outputs.rev }}
+        key: br-system-v2-${{ steps.br.outputs.rev }}
 
     # Keep the image on the run even if publishing the release fails, so a
     # rejected release never throws away a build.
