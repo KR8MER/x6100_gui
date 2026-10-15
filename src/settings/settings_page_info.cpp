@@ -33,14 +33,15 @@ void make_info_page(SettingsPage &page) {
 
     /* The tuner's setting for this frequency, raw: see atu_log.h */
     lv_obj_t *tuner = lv_label_create(grid);
-    lv_obj_set_style_text_line_space(tuner, 20, LV_PART_MAIN);
-    lv_obj_align_to(tuner, label, LV_ALIGN_OUT_BOTTOM_LEFT, 0, 30);
+    lv_obj_set_style_text_font(tuner, &sony_24, LV_PART_MAIN);
+    lv_obj_set_style_text_line_space(tuner, 4, LV_PART_MAIN);
+    lv_obj_align_to(tuner, label, LV_ALIGN_OUT_BOTTOM_LEFT, 0, 24);
     if (cfg_atu_is_loaded()) {
         char bits[40];
         atu_log_format_bits(cfg_atu_get_network(), bits, sizeof(bits));
-        lv_label_set_text_fmt(tuner, "Tuner here: 0x%08X\n%s\nEvery tune is logged to atu_log.csv",
+        lv_label_set_text_fmt(tuner, "Tuner here: 0x%08X  (each tune is logged to atu_log.csv)\n%s",
                               (unsigned)cfg_atu_get_network(), bits);
     } else {
-        lv_label_set_text(tuner, "Tuner here: no saved tune\nEvery tune is logged to atu_log.csv");
+        lv_label_set_text(tuner, "Tuner here: no saved tune  (each tune is logged to atu_log.csv)");
     }
 }

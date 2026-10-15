@@ -23,7 +23,7 @@
 #define MAX_SPOTS     200
 #define SEEN_MAX      256           // activations already announced
 #define SEEN_KEY      48
-#define NAMED_MAX     2             // spots named in one message
+#define NAMED_MAX     1             // spots named per message (it scrolls past one)
 
 typedef struct {
     net_result_t res;
