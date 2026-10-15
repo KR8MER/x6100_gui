@@ -103,12 +103,17 @@ jobs:
         mv sdcard.img sdcard.${{ env.REL_NAME }}.img
         zip sdcard.${{ env.REL_NAME }}.img.zip sdcard.${{ env.REL_NAME }}.img
 
-    # Upload image
-    # - name: 'Upload image'
-    #   uses: actions/upload-artifact@v4
-    #   with:
-    #     name: sdcard.${{ github.ref_name }}.img
-    #     path: AetherX6100Buildroot/build/images/sdcard.${{ github.ref_name }}.img
+    # Keep the image on the run even if publishing the release fails, so a
+    # rejected release never throws away a two-hour build.
+    # The release tag is created on the commit this run built. GITHUB_TOKEN
+    # cannot create a ref whose workflow files differ from the default branch,
+    # so do not push workflow changes to main while a release build runs.
+    - name: Upload image
+      uses: actions/upload-artifact@v6
+      with:
+        name: sdcard.${{ env.REL_NAME }}.img.zip
+        path: AetherX6100Buildroot/build/images/sdcard.${{ env.REL_NAME }}.img.zip
+        compression-level: 0
 
     # Create release
     - name: Release
