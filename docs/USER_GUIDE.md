@@ -407,6 +407,10 @@ a long press saves the screen as a PNG file on the DATA partition.
 
 * **The splash looks plain, or has no lightning.** The animated splash is in
   v1.0.2-kr8mer.5 and later; check the version on the splash's bottom line.
+* **Holding LOCK.** A short press locks or unlocks the frequency. Holding it
+  is the way out of a hung radio: it resets the radio board and powers the
+  radio off. So it only happens when you hold LOCK a second time within 5
+  seconds of the message *"Hold LOCK again to reset and power off the radio"*.
 * **POTA hunter says "No spots".** Check Wi-Fi is on and connected
   (APP → page 4 → WiFi). The message says what went wrong.
 * **The clock is wrong after boot.** Without Wi-Fi or a GPS the radio keeps

@@ -6,4 +6,4 @@
 
 #pragma once
 
-#define VERSION "v1.0.2-kr8mer.12"
+#define VERSION "v1.0.2-kr8mer.13"

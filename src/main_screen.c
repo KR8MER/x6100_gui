@@ -9,6 +9,7 @@
 #include "main_screen.h"
 
 #include <math.h>
+#include <time.h>
 
 #include "globals.h"
 #include "styles.h"
@@ -667,14 +668,30 @@ static void keypad_power(const event_keypad_t *kp) {
     }
 }
 
+/* A long press resets the base board and quits the app (a way out of a
+ * hung radio), which also powers it down. It is easy to hold LOCK by
+ * accident, so it takes a second long press within RESET_CONFIRM_SEC. */
+#define RESET_CONFIRM_SEC 5
+
 static void keypad_lock(const event_keypad_t *kp) {
+    static time_t reset_asked;
+
     if (kp->state == KEYPAD_RELEASE) {
         lm_toggle_freq();
         voice_say_text_fmt("Frequency %s", lm_get_freq() ? "locked" : "unlocked");
     } else if (kp->state == KEYPAD_LONG) {
-        radio_bb_reset();
-        // Stop app
-        app_is_running = false;
+        time_t now = time(NULL);
+
+        if (reset_asked && now - reset_asked <= RESET_CONFIRM_SEC) {
+            reset_asked = 0;
+            radio_bb_reset();
+            // Stop app
+            app_is_running = false;
+        } else {
+            reset_asked = now;
+            msg_update_text_fmt("Hold LOCK again to reset and power off the radio");
+            voice_say_text_fmt("Hold lock again to reset the radio");
+        }
     }
 }
 
