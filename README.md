@@ -184,3 +184,11 @@ git submodule update
 cd buildroot
 ./build.sh
 ```
+
+## Font
+
+The interface uses **B612** (Bold), the typeface Airbus and Intactile
+designed for aircraft cockpit displays, under the SIL Open Font License
+(`fonts_src/B612-OFL.txt`). Status icons come from Font Awesome 5, as
+shipped with LVGL. `fonts_src/make_fonts.sh` regenerates `src/fonts/`.
+
