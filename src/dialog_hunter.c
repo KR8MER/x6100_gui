@@ -16,6 +16,8 @@
 #include "dialog_hunter.h"
 
 #include <curl/curl.h>
+
+#include "net_fetch.h"
 #include <ft8lib/constants.h>
 #include <pthread.h>
 #include <stdio.h>
@@ -146,6 +148,8 @@ static void *fetch_thread(void *arg) {
         curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 8L);
         curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
         curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L);
+        curl_easy_setopt(curl, CURLOPT_CAINFO, NET_CA_BUNDLE);   // none built in
+        curl_easy_setopt(curl, CURLOPT_CAPATH, NET_CA_PATH);
 
         CURLcode rc   = curl_easy_perform(curl);
         long     http = 0;

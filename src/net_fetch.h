@@ -28,6 +28,12 @@ typedef struct {
 /* Blocking GET / form POST (worker thread only). True on HTTP 200. */
 bool net_get(const char *url, net_result_t *res);
 bool net_post_form(const char *url, const char *form, net_result_t *res);
+/* The system's certificate bundle. libcurl on the radio is built with
+ * GnuTLS and no default bundle ("CAfile: none"), so every HTTPS request
+ * must name it, or no server can be verified. */
+#define NET_CA_BUNDLE "/etc/ssl/certs/ca-certificates.crt"
+#define NET_CA_PATH   "/etc/ssl/certs"
+
 /* POST a JSON body (Content-Type: application/json) */
 bool net_post_json(const char *url, const char *json, net_result_t *res);
 void net_result_free(net_result_t *res);

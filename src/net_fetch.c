@@ -129,6 +129,8 @@ static bool request(const char *url, const char *form, const char *ctype, net_re
     curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 8L);
     curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
     curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L);
+    curl_easy_setopt(curl, CURLOPT_CAINFO, NET_CA_BUNDLE);
+    curl_easy_setopt(curl, CURLOPT_CAPATH, NET_CA_PATH);
     char detail[CURL_ERROR_SIZE] = "";
     curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, detail);
     struct curl_slist *headers = NULL;
