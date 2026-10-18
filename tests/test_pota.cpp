@@ -95,13 +95,23 @@ TEST_CASE("Self-spot request body, as pota.app's spot form sends it", "[pota]") 
     free(j);
 
     j = pota_spot_json("KR8MER", "US-1234", 7185550, MODE_SSB, "QRT 5 min", "X");
-    CHECK(field(j, "frequency") == "7185.5");    // to 100 Hz, cut
+    CHECK(field(j, "frequency") == "7185.55");   // up to 2 decimals
     CHECK(field(j, "mode") == "SSB");
     CHECK(field(j, "comments") == "QRT 5 min");
     free(j);
 
     j = pota_spot_json("KR8MER", "US-1234", 14349990, MODE_CW, nullptr, "X");
-    CHECK(field(j, "frequency") == "14349.9");   // not rounded past the band edge
+    CHECK(field(j, "frequency") == "14349.99");  // cut, not rounded past the band edge
+    free(j);
+
+    j = pota_spot_json("KR8MER", "US-1234", 14074250, MODE_FT8, nullptr, "X");
+    CHECK(field(j, "frequency") == "14074.25");
+    free(j);
+    j = pota_spot_json("KR8MER", "US-1234", 14074500, MODE_FT8, nullptr, "X");
+    CHECK(field(j, "frequency") == "14074.5");   // trailing zero stripped
+    free(j);
+    j = pota_spot_json("KR8MER", "US-1234", 14074059, MODE_FT8, nullptr, "X");
+    CHECK(field(j, "frequency") == "14074.05");
     free(j);
 }
 

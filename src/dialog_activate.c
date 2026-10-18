@@ -82,8 +82,6 @@ static const char *group_name(qso_log_mode_group_t g) {
     }
 }
 
-static void names_found(const char *ref, bool ok);
-
 static void show(void) {
     char parks[POTA_PARKS_MAX][POTA_REF_LEN];
     int  n   = pota_activation_parks(parks, POTA_PARKS_MAX);
@@ -156,25 +154,21 @@ static void show(void) {
     }
 }
 
+static void look_up_names(void);
+
 static void names_found(const char *ref, bool ok) {
+    (void)ref;
+    (void)ok;
     if (!dialog.run) return;
     show();
-    /* the next park without a name, one look-up at a time */
-    char parks[POTA_PARKS_MAX][POTA_REF_LEN];
-    int  n = pota_activation_parks(parks, POTA_PARKS_MAX);
-    for (int i = 0; ok && i < n; i++) {
-        if (!pota_park_name(parks[i])[0] && strcmp(parks[i], ref) != 0) {
-            pota_park_lookup(parks[i], names_found);
-            break;
-        }
-    }
+    look_up_names();   // the next park, found or not (one look-up at a time)
 }
 
 static void look_up_names(void) {
     char parks[POTA_PARKS_MAX][POTA_REF_LEN];
     int  n = pota_activation_parks(parks, POTA_PARKS_MAX);
     for (int i = 0; i < n; i++) {
-        if (!pota_park_name(parks[i])[0]) {
+        if (pota_park_wanted(parks[i])) {
             pota_park_lookup(parks[i], names_found);
             return;
         }

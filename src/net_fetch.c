@@ -88,6 +88,10 @@ static bool request(const char *url, const char *form, const char *ctype, net_re
         /* the reply often says why (POTA: "Invalid park reference") */
         if (res->body && res->body[0]) {
             snprintf(res->error, sizeof(res->error), "Server said %ld: %.80s", res->http, res->body);
+            /* one line, and no LVGL recolour marks */
+            for (char *c = res->error; *c; c++) {
+                if ((unsigned char)*c < ' ' || *c == '#') *c = ' ';
+            }
         } else {
             snprintf(res->error, sizeof(res->error), "Server said %ld", res->http);
         }

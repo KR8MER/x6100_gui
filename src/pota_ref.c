@@ -207,15 +207,18 @@ const char *pota_spot_mode(qso_log_mode_t mode) {
 char *pota_spot_json(const char *call, const char *park, uint64_t freq_hz, qso_log_mode_t mode,
                      const char *comments, const char *source) {
     char khz[24];
-    /* kHz to 100 Hz, as pota.app sends it: 14074, 7185.5. Cut, not rounded:
-     * rounding could put a signal at a band edge outside the band. */
-    uint64_t tenths = freq_hz / 100;
-    unsigned dec    = (unsigned)(tenths % 10);
+    /* kHz with up to 2 decimals, trailing zeros stripped, as pota.app's
+     * spot form sends it: 14074, 7185.5, 14074.25. Cut to 10 Hz, not
+     * rounded: rounding could put a signal at a band edge outside it. */
+    uint64_t cents = freq_hz / 10;
+    unsigned dec   = (unsigned)(cents % 100);
 
     if (dec == 0) {
-        snprintf(khz, sizeof(khz), "%llu", (unsigned long long)(tenths / 10));
+        snprintf(khz, sizeof(khz), "%llu", (unsigned long long)(cents / 100));
+    } else if (dec % 10 == 0) {
+        snprintf(khz, sizeof(khz), "%llu.%u", (unsigned long long)(cents / 100), dec / 10);
     } else {
-        snprintf(khz, sizeof(khz), "%llu.%u", (unsigned long long)(tenths / 10), dec);
+        snprintf(khz, sizeof(khz), "%llu.%02u", (unsigned long long)(cents / 100), dec);
     }
 
     json_t *o = json_pack("{s:s, s:s, s:s, s:s, s:s, s:s, s:s}", "activator", call ? call : "", "spotter",

@@ -107,11 +107,16 @@ void adif_add_qso(adif_log l, qso_log_record_t qso)
             }
         }
     }
-    /* Own park(s) when activating: POTA reads MY_SIG_INFO (one park per
-     * upload file), other loggers MY_POTA_REF (a list is allowed) */
+    /* Own park(s) when activating. MY_SIG_INFO takes one value (an upload
+     * file has one park, so it is that one); MY_POTA_REF is the field that
+     * takes the list of an n-fer, after it so a reader keeps the list. */
     if (qso.my_sig[0] && qso.my_sig_info[0]) {
+        char first[sizeof(qso.my_sig_info)];
+        snprintf(first, sizeof(first), "%s", qso.my_sig_info);
+        char *comma = strchr(first, ',');
+        if (comma) *comma = 0;
         write_str(l->fd, "MY_SIG", qso.my_sig);
-        write_str(l->fd, "MY_SIG_INFO", qso.my_sig_info);
+        write_str(l->fd, "MY_SIG_INFO", first);
         if (strcmp(qso.my_sig, "POTA") == 0) {
             write_str(l->fd, "MY_POTA_REF", qso.my_sig_info);
         }
@@ -219,7 +224,7 @@ int adif_read(const char * path, qso_log_record_t ** records) {
                     COPY_STR(cur_record->my_sig, s + pmatch[0].rm_eo, val_len);
                 } else if (key_is(s, pmatch, "MY_SIG_INFO")) {
                     COPY_STR(cur_record->my_sig_info, s + pmatch[0].rm_eo, val_len);
-                } else if (key_is(s, pmatch, "MY_POTA_REF") && !cur_record->my_sig_info[0]) {
+                } else if (key_is(s, pmatch, "MY_POTA_REF")) {   // the full list
                     strcpy(cur_record->my_sig, "POTA");
                     COPY_STR(cur_record->my_sig_info, s + pmatch[0].rm_eo, val_len);
                 } else if (key_is(s, pmatch, "POTA_REF") && !cur_record->sig_info[0]) {

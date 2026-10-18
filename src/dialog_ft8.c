@@ -290,6 +290,14 @@ static void udp_timer_cb(lv_timer_t *t) {
     }
 }
 
+/* LVGL thread: qso_log.adi and the POTA upload files after an FT8/FT4 QSO */
+static void qso_saved_cb(void *arg) {
+    qso_log_record_t *qso = arg;
+
+    qso_log_update_adif();
+    pota_activation_saved(qso);
+}
+
 static void save_qso(const char *remote_callsign, const char *remote_grid, const int r_snr, const int s_snr) {
     time_t now = time(NULL);
 
@@ -306,10 +314,10 @@ static void save_qso(const char *remote_callsign, const char *remote_grid, const
 
     adif_add_qso(ft8_log, qso);
 
-    // Save QSO to sqlite log, and the log's ADIF copy with it
+    // Save QSO to sqlite log; its ADIF copies are rewritten on the LVGL
+    // thread (this runs on the audio thread, as does Log QSO's export there)
     if (qso_log_record_save(qso) > 0) {
-        qso_log_update_adif();
-        pota_activation_saved(&qso);
+        scheduler_put(qso_saved_cb, &qso, sizeof(qso));
     }
 
     /* Tell UDP listeners: the structured QSO Logged and the ADIF form, a

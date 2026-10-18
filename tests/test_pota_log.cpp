@@ -126,6 +126,11 @@ TEST_CASE("POTA activation in the log", "[pota]") {
         unlink(path);
         CHECK(qso_log_write_activation("US-4321", now, path) == 0);   // nothing at that park
         CHECK(access(path, F_OK) != 0);
+        FILE *old = fopen(path, "w");                                  // a stale file goes
+        REQUIRE(old);
+        fclose(old);
+        CHECK(qso_log_write_activation("US-4321", now, path) == 0);
+        CHECK(access(path, F_OK) != 0);
     }
 
     SECTION("the whole log carries both parks, and reads back") {
@@ -133,7 +138,8 @@ TEST_CASE("POTA activation in the log", "[pota]") {
         unlink(path);
         REQUIRE(qso_log_export_adif(path) == 11);   // 12 added, one repeat refused
         std::string f = slurp(path);
-        CHECK(count_of(f, "<MY_SIG_INFO:15>US-1234,US-5678") == 9);
+        CHECK(count_of(f, "<MY_SIG_INFO:7>US-1234") == 9);           // one value
+        CHECK(count_of(f, "<MY_SIG_INFO:15>") == 0);
         CHECK(count_of(f, "<MY_POTA_REF:15>US-1234,US-5678") == 9);
         CHECK(count_of(f, "<POTA_REF:7>US-2222") == 1);
 
@@ -150,4 +156,22 @@ TEST_CASE("POTA activation in the log", "[pota]") {
         free(recs);
         unlink(path);
     }
+}
+
+TEST_CASE("QRZ gets a 2-fer P2P once", "[pota]") {
+    make_log();
+    qso_log_row_t rows[32];
+    int before = qso_log_qrz_unsent_count();
+    int n = qso_log_qrz_unsent(rows, 32);
+    REQUIRE(n == before);
+    CHECK(n == 10);   // 11 rows, the N0P 2-fer is one QSO
+    int n0p = 0;
+    for (int i = 0; i < n; i++) {
+        if (std::string(rows[i].rec.remote_call) == "N0P") {
+            n0p++;
+            CHECK(qso_log_mark_qrz_sent(rows[i].id));
+        }
+    }
+    CHECK(n0p == 1);
+    CHECK(qso_log_qrz_unsent_count() == 9);   // both N0P rows are now sent
 }

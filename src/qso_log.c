@@ -572,12 +572,20 @@ int qso_log_write_activation(const char *park, time_t day, const char *path) {
     adif_log_close(l);
     free(l);
     sqlite3_finalize(stmt);
-    if (n == 0 || rename(tmp, path) != 0) {
+    if (n == 0) {
         unlink(tmp);
-        return n == 0 ? 0 : -1;
+        unlink(path);   // no QSOs there (any more): no upload file
+        return 0;
+    }
+    if (rename(tmp, path) != 0) {
+        unlink(tmp);
+        return -1;
     }
     return n;
 }
+
+/* A P2P with a 2-fer is one QSO in two rows (one per park): QRZ gets it once */
+#define QRZ_ONE_PER_QSO "SELECT MIN(rowid) FROM qso_log WHERE qrz_sent = 0 GROUP BY ts, remote_callsign"
 
 int qso_log_qrz_unsent(qso_log_row_t *out, int max) {
     sqlite3_stmt *stmt;
@@ -587,7 +595,7 @@ int qso_log_qrz_unsent(qso_log_row_t *out, int max) {
     if (!db || max <= 0) {
         return 0;
     }
-    if (sqlite3_prepare_v2(db, SELECT_ROWS_ID "WHERE qrz_sent = 0 ORDER BY ts LIMIT ?", -1, &stmt, NULL) !=
+    if (sqlite3_prepare_v2(db, SELECT_ROWS_ID "WHERE qrz_sent = 0 AND rowid IN (" QRZ_ONE_PER_QSO ") ORDER BY ts LIMIT ?", -1, &stmt, NULL) !=
         SQLITE_OK) {
         LV_LOG_ERROR("Can't read unsent QSOs: %s", sqlite3_errmsg(db));
         return -1;
@@ -612,7 +620,7 @@ int qso_log_qrz_unsent_count(void) {
     sqlite3_stmt *stmt;
     int           n = -1;
 
-    if (!db || sqlite3_prepare_v2(db, "SELECT COUNT(*) FROM qso_log WHERE qrz_sent = 0", -1, &stmt, NULL) !=
+    if (!db || sqlite3_prepare_v2(db, "SELECT COUNT(*) FROM qso_log WHERE qrz_sent = 0 AND rowid IN (" QRZ_ONE_PER_QSO ")", -1, &stmt, NULL) !=
                    SQLITE_OK) {
         return -1;
     }
@@ -652,12 +660,13 @@ bool qso_log_mark_qrz_sent(int64_t id) {
     sqlite3_stmt *stmt;
     bool          ok = false;
 
-    if (!db || sqlite3_prepare_v2(db, "UPDATE qso_log SET qrz_sent = 1 WHERE rowid = ?", -1, &stmt, NULL) !=
+    if (!db || sqlite3_prepare_v2(db, "UPDATE qso_log SET qrz_sent = 1 WHERE rowid IN (SELECT b.rowid FROM qso_log a JOIN qso_log b "
+                                  "ON a.ts = b.ts AND a.remote_callsign = b.remote_callsign WHERE a.rowid = ?1)", -1, &stmt, NULL) !=
                    SQLITE_OK) {
         return false;
     }
     if (sqlite3_bind_int64(stmt, 1, id) == SQLITE_OK && sqlite3_step(stmt) == SQLITE_DONE) {
-        ok = sqlite3_changes(db) == 1;
+        ok = sqlite3_changes(db) >= 1;   // a 2-fer P2P: every row of it
     }
     if (!ok) {
         LV_LOG_ERROR("Can't mark QSO %lld as sent to QRZ: %s", (long long)id, sqlite3_errmsg(db));

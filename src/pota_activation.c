@@ -7,6 +7,7 @@
 #include "pota_activation.h"
 
 #include <errno.h>
+#include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -21,19 +22,25 @@
 #define SPOT_URL "https://api.pota.app/spot"
 #define NAMES_MAX 8
 
-static char parks[POTA_PARKS_MAX][POTA_REF_LEN];
-static int  park_count;
+/* Set on the LVGL thread; also read by pota_activation_tag(), which FT8
+ * calls on the audio thread */
+static pthread_mutex_t parks_mux = PTHREAD_MUTEX_INITIALIZER;
+static char            parks[POTA_PARKS_MAX][POTA_REF_LEN];
+static int             park_count;
 
 /* ---- the activation ---- */
 
 static void load(void) {
     char text[PARAM_TEXT_MAX];
 
+    char refs[POTA_PARKS_MAX][POTA_REF_LEN];
+
     param_t_get_into(cfg.pota_parks(), text, sizeof(text));
-    park_count = pota_refs_parse(text, parks, POTA_PARKS_MAX, NULL, 0);
-    if (park_count < 0) {
-        park_count = 0;
-    }
+    int n = pota_refs_parse(text, refs, POTA_PARKS_MAX, NULL, 0);
+    pthread_mutex_lock(&parks_mux);
+    memcpy(parks, refs, sizeof(parks));
+    park_count = n < 0 ? 0 : n;
+    pthread_mutex_unlock(&parks_mux);
 }
 
 /* Moved off the spotted frequency and settled there: offer a re-spot. A
@@ -72,11 +79,12 @@ void pota_activation_init(void) {
 }
 
 int pota_activation_parks(char out[][POTA_REF_LEN], int max) {
+    pthread_mutex_lock(&parks_mux);
     int n = park_count < max ? park_count : max;
-
     for (int i = 0; i < n; i++) {
         snprintf(out[i], POTA_REF_LEN, "%s", parks[i]);
     }
+    pthread_mutex_unlock(&parks_mux);
     return n;
 }
 
@@ -84,7 +92,8 @@ bool pota_activation_active(void) {
     return park_count > 0;
 }
 
-static time_t   last_spot_time;
+static time_t   last_spot_time;   // last spot sent (attempted)
+static uint64_t attempt_freq;     // ... on this frequency
 static int      last_spot_mode = -1;
 
 bool pota_activation_set(const char *text, char *why, size_t why_len) {
@@ -99,23 +108,35 @@ bool pota_activation_set(const char *text, char *why, size_t why_len) {
         }
         return false;
     }
-    char joined[PARAM_TEXT_MAX];
+    char joined[PARAM_TEXT_MAX], before[PARAM_TEXT_MAX];
     pota_refs_join(refs, n, joined, sizeof(joined));
+    param_t_get_into(cfg.pota_parks(), before, sizeof(before));
     param_t_set(cfg.pota_parks(), joined);
+    pthread_mutex_lock(&parks_mux);
     memcpy(parks, refs, sizeof(parks));
-    park_count     = n;
-    last_spot_freq = 0;
-    last_spot_time = 0;
-    last_spot_mode = -1;
+    park_count = n;
+    pthread_mutex_unlock(&parks_mux);
+    /* a new activation starts unspotted; the same parks again keep the
+     * repeat guard */
+    if (strcmp(before, joined) != 0) {
+        last_spot_freq = 0;
+        last_spot_time = 0;
+        last_spot_mode = -1;
+        attempt_freq   = 0;
+    }
     return true;
 }
 
 void pota_activation_tag(qso_log_record_t *qso) {
-    if (park_count == 0 || !qso) {
+    if (!qso) {
         return;
     }
-    snprintf(qso->my_sig, sizeof(qso->my_sig), "POTA");
-    pota_refs_join(parks, park_count, qso->my_sig_info, sizeof(qso->my_sig_info));
+    pthread_mutex_lock(&parks_mux);
+    if (park_count > 0) {
+        snprintf(qso->my_sig, sizeof(qso->my_sig), "POTA");
+        pota_refs_join(parks, park_count, qso->my_sig_info, sizeof(qso->my_sig_info));
+    }
+    pthread_mutex_unlock(&parks_mux);
 }
 
 static bool ensure_dir(void) {
@@ -180,19 +201,45 @@ bool pota_activation_is_dupe(const char *call, qso_log_band_t band, qso_log_mode
 
 /* ---- park names ---- */
 
+/* Found names, and failed look-ups with when to try again (no name) */
+#define RETRY_NO_PARK_SEC (24 * 3600)   // pota.app said there is no such park
+#define RETRY_FAILED_SEC  (5 * 60)      // no reply (Wi-Fi off, server down)
+
 static struct {
-    char ref[POTA_REF_LEN];
-    char name[64];
+    char   ref[POTA_REF_LEN];
+    char   name[64];
+    time_t retry_at;
 } names[NAMES_MAX];
 static int names_next;
 
-const char *pota_park_name(const char *ref) {
+static int name_slot(const char *ref) {
     for (int i = 0; ref && i < NAMES_MAX; i++) {
         if (names[i].ref[0] && strcasecmp(names[i].ref, ref) == 0) {
-            return names[i].name;
+            return i;
         }
     }
-    return "";
+    return -1;
+}
+
+const char *pota_park_name(const char *ref) {
+    int i = name_slot(ref);
+    return i >= 0 ? names[i].name : "";
+}
+
+bool pota_park_wanted(const char *ref) {
+    int i = name_slot(ref);
+    return pota_ref_valid(ref) && (i < 0 || (!names[i].name[0] && time(NULL) >= names[i].retry_at));
+}
+
+static void remember(const char *ref, const char *name, time_t retry_at) {
+    int i = name_slot(ref);
+    if (i < 0) {
+        i          = names_next;
+        names_next = (names_next + 1) % NAMES_MAX;
+    }
+    snprintf(names[i].ref, sizeof(names[i].ref), "%s", ref);
+    snprintf(names[i].name, sizeof(names[i].name), "%s", name);
+    names[i].retry_at = retry_at;
 }
 
 typedef struct {
@@ -219,13 +266,16 @@ static void lookup_done(void *ctx) {
 
     looking_up = false;
     if (ok) {
-        snprintf(names[names_next].ref, sizeof(names[0].ref), "%s", job->ref);
+        char name[64];
         if (park.location[0]) {
-            snprintf(names[names_next].name, sizeof(names[0].name), "%.40s, %.20s", park.name, park.location);
+            snprintf(name, sizeof(name), "%.40s, %.20s", park.name, park.location);
         } else {
-            snprintf(names[names_next].name, sizeof(names[0].name), "%s", park.name);
+            snprintf(name, sizeof(name), "%s", park.name);
         }
-        names_next = (names_next + 1) % NAMES_MAX;
+        remember(job->ref, name, 0);
+    } else {
+        /* a reply that is not a park (pota.app sends null) vs no reply */
+        remember(job->ref, "", time(NULL) + (job->ok ? RETRY_NO_PARK_SEC : RETRY_FAILED_SEC));
     }
     if (job->done) {
         job->done(job->ref, ok);
@@ -235,7 +285,7 @@ static void lookup_done(void *ctx) {
 }
 
 bool pota_park_lookup(const char *ref, void (*done)(const char *ref, bool ok)) {
-    if (looking_up || !pota_ref_valid(ref)) {
+    if (looking_up || !pota_park_wanted(ref)) {
         return false;
     }
     lookup_t *job = calloc(1, sizeof(*job));
@@ -275,13 +325,17 @@ static void spot_done(void *ctx) {
 
     spotting = false;
     if (job->ok) {
-        last_spot_freq = job->freq_hz;
-        last_spot_mode = job->mode;
-        last_spot_time = time(NULL);
+        last_spot_freq = job->freq_hz;   // shown, and watched for a QSY
         msg_schedule_text_fmt("Spotted at %s on %llu.%llu kHz", job->park,
                               (unsigned long long)(job->freq_hz / 1000),
                               (unsigned long long)(job->freq_hz % 1000 / 100));
     } else {
+        /* refused (4xx): nothing was stored, a corrected retry may go at
+         * once. A timeout or server error may have stored it: the repeat
+         * guard stays. */
+        if (job->res.http >= 400 && job->res.http < 500) {
+            last_spot_time = 0;
+        }
         msg_schedule_text_fmt("Spot not sent: %s", job->res.error);
     }
     net_result_free(&job->res);
@@ -316,7 +370,7 @@ pota_spot_start_t pota_self_spot(uint64_t freq_hz, qso_log_mode_t mode, const ch
         return POTA_SPOT_BUSY;
     }
     /* the same frequency and mode again: not before the gap */
-    uint64_t moved = freq_hz > last_spot_freq ? freq_hz - last_spot_freq : last_spot_freq - freq_hz;
+    uint64_t moved = freq_hz > attempt_freq ? freq_hz - attempt_freq : attempt_freq - freq_hz;
     if (last_spot_time && moved < 1000 && (int)mode == last_spot_mode &&
         time(NULL) - last_spot_time < POTA_SPOT_GAP_SEC) {
         return POTA_SPOT_TOO_SOON;
@@ -339,6 +393,11 @@ pota_spot_start_t pota_self_spot(uint64_t freq_hz, qso_log_mode_t mode, const ch
         return POTA_SPOT_FAILED;
     }
     spotting = true;
+    /* the guard counts from the attempt: a reply lost after pota.app
+     * stored the spot must not let the same spot go again */
+    last_spot_mode = mode;
+    last_spot_time = time(NULL);
+    attempt_freq   = freq_hz;
     return POTA_SPOT_STARTED;
 }
 

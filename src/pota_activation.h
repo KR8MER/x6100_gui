@@ -65,6 +65,10 @@ bool pota_activation_is_dupe(const char *call, qso_log_band_t band, qso_log_mode
 /* The park's name, if already looked up ("" otherwise) */
 const char *pota_park_name(const char *ref);
 
+/* True when the name is not known and a look-up may go now (a failed one
+ * waits before it is tried again) */
+bool pota_park_wanted(const char *ref);
+
 /* Look the park up on pota.app in the background; done(ref, ok) runs on
  * the LVGL thread. Returns false when it could not start (busy, no memory). */
 bool pota_park_lookup(const char *ref, void (*done)(const char *ref, bool ok));
