@@ -525,8 +525,15 @@ int qso_log_export_adif(const char *path) {
     if (!db || sqlite3_prepare_v2(db, SELECT_ROWS "ORDER BY ts", -1, &stmt, NULL) != SQLITE_OK) {
         return -1;
     }
-    unlink(path);
-    adif_log l = adif_log_init(path);
+    /* Written aside and renamed over: a power cut mid-write leaves the
+     * previous file, not half of one */
+    char tmp[256];
+    if (snprintf(tmp, sizeof(tmp), "%s.tmp", path) >= (int)sizeof(tmp)) {
+        sqlite3_finalize(stmt);
+        return -1;
+    }
+    unlink(tmp);
+    adif_log l = adif_log_init(tmp);
     if (!l) {
         sqlite3_finalize(stmt);
         return -1;
@@ -540,7 +547,15 @@ int qso_log_export_adif(const char *path) {
     adif_log_close(l);
     free(l);
     sqlite3_finalize(stmt);
+    if (rename(tmp, path) != 0) {
+        unlink(tmp);
+        return -1;
+    }
     return n;
+}
+
+int qso_log_update_adif(void) {
+    return qso_log_export_adif(QSO_LOG_ADIF_PATH);
 }
 
 static bool create_tables() {

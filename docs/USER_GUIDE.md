@@ -22,6 +22,7 @@ Contents:
 13. [Files on the DATA partition](#13-files-on-the-data-partition)
 14. [Screenshots from the radio](#14-screenshots-from-the-radio)
 15. [Troubleshooting](#15-troubleshooting)
+16. [The radio's web page](#16-the-radios-web-page)
 
 ---
 
@@ -133,7 +134,7 @@ it is the entry being made, and below that your most recent QSOs.
 | **Save** | Logs the QSO with the band, frequency, mode and UTC time from the radio. |
 | page 2: **Name** | The other operator's name (optional). |
 | page 2: **Park / Summit** | A POTA park (e.g. `US-1234`) or SOTA summit reference, if the other station is portable there. Filled in for you when you are hunting (below). |
-| page 2: **Export ADIF** | Writes the whole log to `qso_log.adi` on the DATA partition, with park and summit references as `SIG` / `SIG_INFO` (and `SOTA_REF`) — ready for LoTW, QRZ, the POTA site or a desktop logger. |
+| page 2: **Export ADIF** | Writes the whole log to `qso_log.adi` on the DATA partition now. The radio also rewrites that file after every QSO it saves (FT8 and FT4 included), so it is always current. Park and summit references go in as `SIG` / `SIG_INFO` (and `SOTA_REF`), ready for LoTW, QRZ, the POTA site or a desktop logger. |
 | page 2: **Clear** | Clears the entry. |
 | page 3: **HamQTH Login** | Your HamQTH.com user name and password, for call sign look-up. |
 | page 3: **QRZ Key** | Your QRZ Logbook API key, for uploading QSOs to QRZ. |
@@ -141,6 +142,9 @@ it is the entry being made, and below that your most recent QSOs.
 | page 3: **Look up** | Looks the call up on HamQTH again. |
 
 Saving the same call at the same time twice logs it once.
+
+Typing in these windows: turn the knob to move across the on-screen keys and
+press it to type the highlighted key (a USB keyboard works too).
 
 **Call sign look-up (HamQTH).** With a HamQTH login set, entering a call looks
 it up: the name is filled in (if you have not typed one) and the station's
@@ -163,6 +167,9 @@ The password and key are shown only as you type them (the key afterwards as its
 last 4 characters), but they are stored in the radio's settings file,
 `params.db` on the DATA partition, which anyone with the SD card can read on a
 computer.
+
+You can also set the callsign, grid, HamQTH login, QRZ key and time server
+from a phone or computer: see [The radio's web page](#16-the-radios-web-page).
 
 ## 7. POTA hunting
 
@@ -330,7 +337,7 @@ The `DATA` partition on the SD card can be read and written from a computer.
 
 | File | What it is |
 |---|---|
-| `qso_log.adi` | Written by **Log QSO → Export ADIF**: your whole log. |
+| `qso_log.adi` | Your whole log in ADIF, rewritten after every QSO (and by **Log QSO → Export ADIF**). |
 | `ft_log.adi` | FT8/FT4 QSOs, written as they are made (as in the original GUI). |
 | `incoming_log.adi` | Copy an ADIF log here under this name to import it at the next boot (it is then renamed `incoming_log.adi.bak`). Imported QSOs mark worked call signs and parks. |
 | `ntp_server` | The time server you chose (written by the radio). |
@@ -359,3 +366,21 @@ a long press saves the screen as a PNG file on the DATA partition.
 
 Built on the X6100 GUI by R1CBU and the OpenX6100 contributors. Licensed
 LGPL-2.1-or-later.
+
+## 16. The radio's web page
+
+With the radio on Wi-Fi, open `http://<the radio's address>/` in a browser on
+the same network (the address is in Wi-Fi settings on the radio).
+
+| Page | Does |
+|---|---|
+| **Station** | Callsign, grid square, HamQTH user name and password, QRZ Logbook API key and the time server. Saved passwords and keys are never shown, only whether one is set; leave the box empty to keep it. |
+| **Bands**, **Digital modes** | Band edges and FT8/FT4 frequencies. |
+| **File browser** | Download files from the DATA partition: `qso_log.adi`, `ft_log.adi`, screenshots, recordings. |
+| **Time Editor** | Set the clock and time zone. |
+
+The radio reads the Station settings when it starts, so **switch it off and on
+after saving**. A setting changed on the radio before then replaces the one
+saved on the web page. The page has no password: anyone on your network can
+open it.
+

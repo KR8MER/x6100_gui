@@ -78,6 +78,13 @@ int qso_log_recent(qso_log_record_t *out, int max);
  * Returns the QSO count, or -1 on error. */
 int qso_log_export_adif(const char *path);
 
+/* The whole log as ADIF on the DATA partition, rewritten after each QSO is
+ * saved so the card always carries a current copy */
+#ifndef QSO_LOG_ADIF_PATH
+#define QSO_LOG_ADIF_PATH "/mnt/qso_log.adi"
+#endif
+int qso_log_update_adif(void);
+
 /* A QSO with the row id that names it in the log */
 typedef struct {
     int64_t          id;

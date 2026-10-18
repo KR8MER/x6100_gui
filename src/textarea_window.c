@@ -177,6 +177,17 @@ lv_obj_t * textarea_window_open(textarea_window_cb_t ok, textarea_window_cb_t ca
     return window;
 }
 
+/* Put the encoder on the on-screen keys (on the text when a USB keyboard
+ * is plugged in), ready to turn through them */
+void textarea_window_focus_keys() {
+    lv_obj_t *obj = keyboard ? keyboard : text;
+
+    if (obj) {
+        lv_group_focus_obj(obj);
+        lv_group_set_editing(keyboard_group, true);
+    }
+}
+
 lv_obj_t *textarea_window_open_w_label(textarea_window_cb_t ok_cb, textarea_window_cb_t cancel_cb, const char *text) {
     lv_obj_t * obj = textarea_window_open(ok_cb, cancel_cb);
     lv_label_set_text(label, text);

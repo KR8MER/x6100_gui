@@ -256,7 +256,7 @@ static void time_server_changed(void) {
         lv_textarea_set_accepted_chars(text, TIME_SERVER_HOST_CHARS);
         lv_textarea_set_max_length(text, TIME_SERVER_HOST_MAX - 1);
         textarea_window_set(host.c_str());
-        lv_group_focus_obj(text);
+        textarea_window_focus_keys();
         return;
     }
     time_server_prev = index;

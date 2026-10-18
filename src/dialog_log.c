@@ -6,8 +6,9 @@
  *  Log a QSO in any mode, after Nexus's log strip: band, frequency, mode and
  *  the usual report are filled in from the radio, a pending POTA/SOTA hunt
  *  fills in the activator and reference, and the entry goes into the same log
- *  FT8 writes to. Below the form, the latest QSOs; Export writes the whole
- *  log to /mnt/qso_log.adi for LoTW, QRZ, POTA or a desktop logger.
+ *  FT8 writes to. Below the form, the latest QSOs. The whole log is kept as
+ *  /mnt/qso_log.adi (rewritten after every QSO, and by Export) for LoTW,
+ *  QRZ, POTA or a desktop logger.
  *
  *  On line (page 3), with the operator's own accounts: a call entered is
  *  looked up on HamQTH (name, QTH, grid, country), and a saved QSO goes
@@ -39,7 +40,6 @@
 #include "tz_display.h"
 
 #define RECENT_ROWS 40
-#define EXPORT_PATH "/mnt/qso_log.adi"
 
 static void construct_cb(lv_obj_t *parent);
 static void destruct_cb(void);
@@ -219,6 +219,14 @@ static bool window_closed(void) {
     return true;
 }
 
+/* The text window takes the encoder: with the table still in the group and
+ * in editing mode, the knob scrolled the list instead of the on-screen keys */
+static void open_text_window(textarea_window_cb_t ok, textarea_window_cb_t cancel, const char *title) {
+    lv_group_remove_obj(table);
+    textarea_window_open_w_label(ok, cancel, title);
+    textarea_window_focus_keys();
+}
+
 static void start_lookup(bool asked);
 
 static bool edit_ok(void) {
@@ -255,7 +263,7 @@ static bool edit_ok(void) {
 static void edit(char *field, size_t len, const char *title, const char *chars) {
     editing     = field;
     editing_len = len;
-    textarea_window_open_w_label(edit_ok, window_closed, title);
+    open_text_window(edit_ok, window_closed, title);
     lv_obj_t *text = textarea_window_text();
     if (chars) {
         lv_textarea_set_accepted_chars(text, chars);
@@ -444,7 +452,7 @@ static bool password_cancel(void) {
 /* After the user name window has closed */
 static void ask_password(void *unused) {
     if (!dialog.run) return;
-    textarea_window_open_w_label(password_ok, password_cancel, "Password");
+    open_text_window(password_ok, password_cancel, "Password");
     lv_obj_t *text = textarea_window_text();
     lv_textarea_set_password_mode(text, true);
     lv_textarea_set_max_length(text, PARAM_TEXT_MAX - 1);
@@ -468,7 +476,7 @@ static bool login_user_ok(void) {
 
 static void hamqth_login_cb(button_data_t *b) {
     msg_update_text_fmt("Your HamQTH.com user name (empty removes the login)");
-    textarea_window_open_w_label(login_user_ok, window_closed, "HamQTH user");
+    open_text_window(login_user_ok, window_closed, "HamQTH user");
     lv_obj_t *text = textarea_window_text();
     lv_textarea_set_accepted_chars(text, CALL_CHARS "-_.@");
     lv_textarea_set_max_length(text, PARAM_TEXT_MAX - 1);
@@ -509,7 +517,7 @@ static void qrz_key_cb(button_data_t *b) {
         msg_update_text_fmt("Your QRZ Logbook API key (QRZ.com > Logbook > Settings)");
     }
     memset(key, 0, sizeof(key));
-    textarea_window_open_w_label(qrz_key_ok, qrz_key_cancel, "QRZ key");
+    open_text_window(qrz_key_ok, qrz_key_cancel, "QRZ key");
     lv_obj_t *text = textarea_window_text();
     lv_textarea_set_accepted_chars(text, CALL_CHARS "-");
     lv_textarea_set_max_length(text, PARAM_TEXT_MAX - 1);
@@ -540,6 +548,7 @@ static void save_cb(button_data_t *b) {
     }
 
     if (qso_log_record_save(qso) > 0) {
+        qso_log_update_adif();
         msg_update_text_fmt("Logged %s", entry.call);
         /* straight on to the QRZ Logbook when a key is set */
         if (log_online_qrz_ready()) {
@@ -559,7 +568,7 @@ static void save_cb(button_data_t *b) {
 }
 
 static void export_cb(button_data_t *b) {
-    int n = qso_log_export_adif(EXPORT_PATH);
+    int n = qso_log_update_adif();
     if (n < 0) {
         msg_update_text_fmt("Export failed");
     } else {

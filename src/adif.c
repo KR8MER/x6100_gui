@@ -10,6 +10,7 @@
 #endif
 
 #include "adif.h"
+#include "version.h"
 
 #include "util.h"
 
@@ -229,14 +230,15 @@ int adif_read(const char * path, qso_log_record_t ** records) {
 
 static void write_header(FILE *fd) {
     fprintf(fd, "<PROGRAMID:5>X6100\r\n");
-    fprintf(fd, "<PROGRAMVERSION:5>1.0.0\r\n");
+    fprintf(fd, "<PROGRAMVERSION:%zu>%s\r\n", strlen(VERSION), VERSION);
     fprintf(fd, "<ADIF_VER:4>3.14\r\n");
     fprintf(fd, "<EOH>\r\n");
 }
 
+/* Fields without a value are left out */
 static void write_str(FILE *fd, const char * key, const char * val) {
-    if (val == NULL) {
-        fprintf(fd, "<%s:0>", key);
+    if (val == NULL || val[0] == 0) {
+        return;
     } else {
         size_t l = strlen(val);
         fprintf(fd, "<%s:%i>%s", key, l, val);

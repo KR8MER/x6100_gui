@@ -304,8 +304,10 @@ static void save_qso(const char *remote_callsign, const char *remote_grid, const
 
     adif_add_qso(ft8_log, qso);
 
-    // Save QSO to sqlite log
-    qso_log_record_save(qso);
+    // Save QSO to sqlite log, and the log's ADIF copy with it
+    if (qso_log_record_save(qso) > 0) {
+        qso_log_update_adif();
+    }
 
     /* Tell UDP listeners: the structured QSO Logged and the ADIF form, a
      * valid record (band from frequency, empty fields omitted). */
