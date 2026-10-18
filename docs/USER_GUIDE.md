@@ -393,6 +393,7 @@ The `DATA` partition on the SD card can be read and written from a computer.
 | `incoming_log.adi` | Copy an ADIF log here under this name to import it at the next boot (it is then renamed `incoming_log.adi.bak`). Imported QSOs mark worked call signs and parks. |
 | `pota/` | POTA upload files, one per park and UTC day: `KR8MER@US-1234-20261018.adi`. |
 | `ntp_server` | The time server you chose (written by the radio). |
+| `net_errors.log` | One line per failed internet request (DX cluster, space weather, park names, spots, QRZ, HamQTH): time, address and the exact reason. Send it along with a problem report. |
 | `atu_log.csv` | One line per tune: time, antenna, frequency and the tuner's setting. |
 | `params.db` | The radio's settings, including any HamQTH password and QRZ key. |
 | `*.png` | Screenshots taken on the radio. |
