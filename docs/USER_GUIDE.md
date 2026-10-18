@@ -75,6 +75,14 @@ getting to the log with one press.
 
 Settings has four tabs: **General**, **Interface**, **Voice** and **Info**.
 
+**Screen brightness** (Settings → General → *Timeout, Brightness*): the
+number is how many seconds without a touch of the controls before the screen
+dims (5–120). The slider has two knobs: the right one is the normal
+brightness (0–9), the left one the dimmed brightness after the timeout (all
+the way left: the screen goes off). **Buttons brightness** below it sets the
+key backlight: Always Off, Always On or Temporarily On. A short press of
+**POWER** turns the screen off and on; holding POWER switches the radio off.
+
 ## 4. Themes
 
 **Settings → Interface → Theme** chooses how everything is drawn. The layout,
