@@ -246,6 +246,14 @@ While a park is set:
   that UTC day's QSOs at that park. Download them from the radio's web page
   (File browser → pota) or the SD card, and upload them at pota.app.
 
+**Running a pile-up on FT8/FT4.** Press **TX CQ** in the FT8 window. With
+**CQ again: On** (FT8 page 3, on by default) the radio goes back to calling
+CQ, in the same slot, as soon as a QSO that answered your CQ is over: after
+your RR73/73, or when the caller goes quiet. Each QSO is logged and counted as
+it completes. If nobody answers your CQ after the usual number of tries
+(6), it stops, so it never transmits on its own for long. Calling a
+station yourself (picking them in the list) or turning TX off ends it.
+
 Counts follow the UTC day, as POTA does: an activation that runs past 0000 UTC
 gets a new file and a new count for the new day.
 

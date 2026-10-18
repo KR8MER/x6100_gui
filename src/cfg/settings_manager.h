@@ -146,6 +146,9 @@ class SettingsManager {
         StorageType::GLOBAL, pending_writes_, &global_params_};
     Parameter<int32_t> p_ft8_hold_freq{"ft8_hold_freq", true, 0, 1,
         StorageType::GLOBAL, pending_writes_, &global_params_};
+    // After a QSO that answered your CQ (or a caller who went silent): CQ again
+    Parameter<int32_t> p_ft8_cq_again{"ft8_cq_again", true, 0, 1,
+        StorageType::GLOBAL, pending_writes_, &global_params_};
     Parameter<int32_t> p_ft8_max_repeats{"ft8_max_repeats", 6, {},
         StorageType::GLOBAL, pending_writes_, {}, &global_params_};
 

@@ -136,6 +136,8 @@ static const char * protocol_label_getter();
 static const char * tx_cq_label_getter();
 static const char * tx_call_label_getter();
 static const char * hold_freq_label_getter();
+static const char * cq_again_label_getter();
+static void cq_again_cb(struct button_data_t *btn_data);
 static const char * auto_label_getter();
 
 static void show_cq_all_cb(struct button_data_t *btn_data);
@@ -193,9 +195,19 @@ static buttons_page_t btn_page_2 = {
     {&button_page_2, &button_hold_freq, &button_auto_en_dis, &button_force_save}
 };
 
+static button_data_t button_cq_again = { .type=BTN_TEXT_FN, .label_fn = cq_again_label_getter, .press = cq_again_cb };
+
 static buttons_page_t btn_page_3 = {
-    {&button_page_3, &button_cq_mod, &button_time_sync}
+    {&button_page_3, &button_cq_mod, &button_time_sync, &button_cq_again}
 };
+
+/* CQ again: set up when you start calling CQ (on the LVGL thread), used by
+ * the audio thread when a QSO from that CQ is over */
+static volatile bool cq_session;          // you are calling CQ, or working someone who answered it
+static volatile bool cq_session_again;    // ... and want CQ again after each QSO
+static char          cq_session_msg[sizeof(((ftx_tx_msg_t *)0)->msg)];
+static int           cq_session_repeats;
+static int           cq_session_slot;
 
 static dialog_t dialog = {
     .run = false,
@@ -708,6 +720,18 @@ const char *protocol_label_getter() {
     return buf;
 }
 
+static const char *cq_again_label_getter() {
+    return param_i_get(cfg.ft8.cq_again()) ? "CQ again:\nOn" : "CQ again:\nOff";
+}
+
+static void cq_again_cb(struct button_data_t *btn_data) {
+    if (disable_buttons) return;
+    bool on = !param_i_get(cfg.ft8.cq_again());
+    param_i_set(cfg.ft8.cq_again(), on);
+    cq_session_again = on;
+    msg_schedule_text_fmt(on ? "After a QSO from your CQ: CQ again" : "After a QSO: stop");
+}
+
 const char *tx_cq_label_getter() {
     static char buf[32];
     sprintf(buf, "TX CQ:\n%s", subject_i_get(cq_enabled) ? "Enabled": "Disabled");
@@ -747,6 +771,7 @@ static void mode_ft4_ft8_cb(struct button_data_t *btn_data) {
         proto = FTX_PROTOCOL_FT8;
     }
     param_i_set(cfg.ft8.protocol(), proto);
+    cq_session = false;
     subject_i_set(cq_enabled, false);
 
     worker_done();
@@ -796,10 +821,17 @@ static void tx_cq_en_dis_cb(struct button_data_t *btn_data) {
         tx_msg.repeats = param_i_get(cfg.ft8.max_repeats());
         ftx_qso_processor_reset(qso_processor);
         lv_finder_clear_cursor(finder);
+
+        snprintf(cq_session_msg, sizeof(cq_session_msg), "%s", tx_msg.msg);
+        cq_session_repeats = tx_msg.repeats;
+        cq_session_slot    = tx_time_slot;
+        cq_session_again   = param_i_get(cfg.ft8.cq_again());
+        cq_session         = true;
     } else {
         if (state == TX_PROCESS) {
             state = RX_PROCESS;
         }
+        cq_session = false;
         subject_i_set(cq_enabled, false);
         tx_msg.msg[0] = '\0';
     }
@@ -886,6 +918,7 @@ static void on_table_press(const cell_data_t *cell_data) {
 
     ftx_qso_processor_start_qso(qso_processor, (ftx_msg_meta_t *)&cell_data->meta, &tx_msg);
     if (strlen(tx_msg.msg) > 0) {
+        cq_session = false;   // you picked this station: no CQ after it
         lv_finder_set_cursor(finder, cell_data->meta.freq_hz);
         if (!param_i_get(cfg.ft8.hold_freq())) {
             set_freq(cell_data->meta.freq_hz);
@@ -1171,9 +1204,21 @@ static void on_tick_cb(const slot_info_t *info, bool new_slot,
             }
             if (tx_msg.repeats == 0) {
                 if (strncmp(tx_msg.msg, "CQ", 2) == 0) {
+                    /* the CQ ran out with nobody answering */
                     subject_i_set(cq_enabled, false);
+                    cq_session = false;
+                    tx_msg.msg[0] = '\0';
+                } else if (cq_session && cq_session_again && subject_i_get(tx_enabled)) {
+                    /* the QSO from your CQ is over (RR73 or 73 sent, or the
+                     * caller went silent): call CQ again in your slot */
+                    snprintf(tx_msg.msg, sizeof(tx_msg.msg), "%s", cq_session_msg);
+                    tx_msg.repeats = cq_session_repeats;
+                    tx_time_slot   = cq_session_slot;
+                    subject_i_set(cq_enabled, true);
+                    msg_schedule_text_fmt("QSO done: CQ again");
+                } else {
+                    tx_msg.msg[0] = '\0';
                 }
-                tx_msg.msg[0] = '\0';
             }
             return;
         }
