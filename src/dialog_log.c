@@ -32,6 +32,7 @@
 #include "lock_manager.h"
 #include "log_online.h"
 #include "log_rules.h"
+#include "pota_activation.h"
 #include "msg.h"
 #include "qso_log.h"
 #include "radio.h"
@@ -101,7 +102,7 @@ static struct {
     char rsts[8];
     char rstr[8];
     char name[32];
-    char ref[24];
+    char ref[48];   // one park or summit, or the other station's parks "US-1,US-2"
     char grid[8];   // from the lookup, saved as the station's grid
 } entry;
 
@@ -127,8 +128,18 @@ static int32_t current_freq(void) {
 
 static void refresh_header(void) {
     int32_t f = current_freq();
-    lv_label_set_text_fmt(header, "%i.%03i.%03i   %s   %s cockpit", f / 1000000, (f / 1000) % 1000, f % 1000,
-                          log_mode_name(current_mode()), cockpit_name(cockpit_current()));
+    char    act[48] = "";
+    char    parks[POTA_PARKS_MAX][POTA_REF_LEN];
+    int     n = pota_activation_parks(parks, POTA_PARKS_MAX);
+
+    if (n > 0) {
+        int count = pota_activation_count_today();
+        snprintf(act, sizeof(act), "   POTA %s%s %i/%i", parks[0], n > 1 ? "+" : "", count < 0 ? 0 : count,
+                 POTA_QSOS_NEEDED);
+    }
+    lv_label_set_text_fmt(header, "%i.%03i.%03i   %s   %s%s", f / 1000000, (f / 1000) % 1000, f % 1000,
+                          log_mode_name(current_mode()), n > 0 ? "" : cockpit_name(cockpit_current()),
+                          n > 0 ? act : " cockpit");
 }
 
 /* The form label colours text between '#' marks, and LVGL 8 cannot escape
@@ -145,9 +156,17 @@ static void refresh_form(void) {
     const char *sig = log_sig_for_ref(entry.ref);
     char        call[sizeof(entry.call)], name[sizeof(entry.name)], ref[sizeof(entry.ref)];
 
-    lv_label_set_text_fmt(form, "#ffeb3b %s#   %s / %s   %s   %s%s%s",
-                          entry.call[0] ? no_recolor(entry.call, call, sizeof(call)) : "(call)", entry.rsts,
-                          entry.rstr, no_recolor(entry.name, name, sizeof(name)), sig[0] ? sig : "", sig[0] ? " " : "",
+    /* activating: a call already worked today on this band and mode */
+    bool dupe = entry.call[0] && pota_activation_active() &&
+                pota_activation_is_dupe(entry.call, qso_log_freq_to_band(current_freq()), current_mode());
+
+    if (!sig[0] && strchr(entry.ref, ',')) {
+        sig = "POTA";   // the other station's parks, one QSO each
+    }
+    lv_label_set_text_fmt(form, "#ffeb3b %s#%s   %s / %s   %s   %s%s%s",
+                          entry.call[0] ? no_recolor(entry.call, call, sizeof(call)) : "(call)",
+                          dupe ? " #ff5252 DUPE#" : "", entry.rsts, entry.rstr,
+                          no_recolor(entry.name, name, sizeof(name)), sig[0] ? sig : "", sig[0] ? " " : "",
                           no_recolor(entry.ref, ref, sizeof(ref)));
 }
 
@@ -229,6 +248,22 @@ static void open_text_window(textarea_window_cb_t ok, textarea_window_cb_t cance
 
 static void start_lookup(bool asked);
 
+/* The park's name, from pota.app, as a message */
+static void park_found(const char *ref, bool ok) {
+    if (ok && dialog.run) {
+        msg_update_text_fmt("%s: %s", ref, pota_park_name(ref));
+    }
+}
+
+static void show_park(const char *ref) {
+    const char *name = pota_park_name(ref);
+    if (name[0]) {
+        msg_update_text_fmt("%s: %s", ref, name);
+    } else {
+        pota_park_lookup(ref, park_found);
+    }
+}
+
 static bool edit_ok(void) {
     char old_call[sizeof(entry.call)];
     bool call_edit = editing == entry.call;
@@ -256,6 +291,9 @@ static bool edit_ok(void) {
             start_lookup(false);
         }
     }
+    if (editing == entry.ref && log_sig_for_ref(entry.ref)[0] && strcmp(log_sig_for_ref(entry.ref), "POTA") == 0) {
+        show_park(entry.ref);
+    }
     refresh_form();
     return window_closed();
 }
@@ -279,7 +317,8 @@ static void edit_rsts_cb(button_data_t *b) { edit(entry.rsts, sizeof(entry.rsts)
 static void edit_rstr_cb(button_data_t *b) { edit(entry.rstr, sizeof(entry.rstr), "Report rcvd", "+-0123456789"); }
 static void edit_name_cb(button_data_t *b) { edit(entry.name, sizeof(entry.name), "Name", NULL); }
 static void edit_ref_cb(button_data_t *b) {
-    edit(entry.ref, sizeof(entry.ref), "Park or summit", CALL_CHARS "-");
+    msg_update_text_fmt("Their park or summit; a 2-fer as US-1234,US-5678");
+    edit(entry.ref, sizeof(entry.ref), "Park or summit", CALL_CHARS "-,");
 }
 
 /* ---- on line ---- */
@@ -541,15 +580,45 @@ static void save_cb(button_data_t *b) {
     qso_log_record_t qso = qso_log_record_create(mycall, entry.call, time(NULL), current_mode(), atoi(entry.rsts),
                                                  atoi(entry.rstr), current_freq(), entry.name, NULL,
                                                  PARAM_T_GET(cfg.qth()), entry.grid[0] ? entry.grid : NULL);
-    const char *sig = log_sig_for_ref(entry.ref);
-    if (sig[0]) {
-        snprintf(qso.sig, sizeof(qso.sig), "%s", sig);
-        snprintf(qso.sig_info, sizeof(qso.sig_info), "%s", entry.ref);
+    pota_activation_tag(&qso);
+
+    /* Their park(s): a 2-fer is logged as one QSO per park, the same in all
+     * but SIG_INFO, which is how POTA credits a P2P with each park */
+    char theirs[POTA_PARKS_MAX][POTA_REF_LEN];
+    int  n_theirs = 0;
+    if (strchr(entry.ref, ',')) {
+        n_theirs = pota_refs_parse(entry.ref, theirs, POTA_PARKS_MAX, NULL, 0);
+        if (n_theirs <= 0) {
+            msg_update_text_fmt("Park list: references like US-1234,US-5678");
+            return;
+        }
+    } else {
+        const char *sig = log_sig_for_ref(entry.ref);
+        if (sig[0]) {
+            snprintf(qso.sig, sizeof(qso.sig), "%s", sig);
+            snprintf(qso.sig_info, sizeof(qso.sig_info), "%s", entry.ref);
+        }
     }
 
-    if (qso_log_record_save(qso) > 0) {
+    int saved = 0;
+    if (n_theirs > 0) {
+        for (int i = 0; i < n_theirs; i++) {
+            snprintf(qso.sig, sizeof(qso.sig), "POTA");
+            snprintf(qso.sig_info, sizeof(qso.sig_info), "%s", theirs[i]);
+            if (qso_log_record_save(qso) > 0) saved++;
+        }
+    } else if (qso_log_record_save(qso) > 0) {
+        saved = 1;
+    }
+
+    if (saved > 0) {
         qso_log_update_adif();
-        msg_update_text_fmt("Logged %s", entry.call);
+        if (n_theirs > 1) {
+            msg_update_text_fmt("Logged %s at %i parks", entry.call, saved);
+        } else {
+            msg_update_text_fmt("Logged %s", entry.call);
+        }
+        pota_activation_saved(&qso);   // says how far the activation is
         /* straight on to the QRZ Logbook when a key is set */
         if (log_online_qrz_ready()) {
             log_online_start_t st = log_online_qrz_upload_qso(qso.time, qso.remote_call, qrz_saved_done, NULL);
@@ -560,6 +629,7 @@ static void save_cb(button_data_t *b) {
             }
         }
         reset_entry();
+        refresh_header();
         refresh_form();
         refresh_table();
     } else {

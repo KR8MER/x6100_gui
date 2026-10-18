@@ -55,6 +55,8 @@ typedef struct {
     char remote_grid[8];
     char sig[8];            // ADIF SIG: "POTA", "SOTA" (empty: none)
     char sig_info[24];      // ADIF SIG_INFO: park or summit reference
+    char my_sig[8];         // ADIF MY_SIG: "POTA" when activating
+    char my_sig_info[64];   // ADIF MY_SIG_INFO: own park(s), "US-1234,US-5678"
 } qso_log_record_t;
 
 
@@ -110,6 +112,32 @@ bool qso_log_has_ref(const char *ref);
 /* True when `call` (any portable form) is already logged at `ref` on the UTC
  * day of `now`: POTA counts one QSO per activator, park and day */
 bool qso_log_worked_at_ref_today(const char *call, const char *ref, time_t now);
+
+/* POTA's mode groups for dupes: CW, phone (SSB/AM/FM) and data */
+typedef enum {
+    MODE_GROUP_CW    = 0,
+    MODE_GROUP_PHONE = 1,
+    MODE_GROUP_DATA  = 2,
+} qso_log_mode_group_t;
+
+qso_log_mode_group_t qso_log_mode_group(qso_log_mode_t mode);
+
+typedef struct {
+    qso_log_band_t       band;
+    qso_log_mode_group_t group;
+    int                  count;
+} qso_log_band_count_t;
+
+/* Activation of `park` on the UTC day of `day` (MY_SIG_INFO holds it). Counts
+ * leave out dupes: a call counts once per band and mode group. */
+int  qso_log_activation_count(const char *park, time_t day);
+bool qso_log_activation_dupe(const char *call, qso_log_band_t band, qso_log_mode_t mode, const char *park,
+                             time_t day);
+/* QSOs per band and mode group, at most max rows; -1 on error */
+int  qso_log_activation_summary(const char *park, time_t day, qso_log_band_count_t *out, int max);
+/* The day's QSOs at `park` as a POTA upload file (MY_SIG_INFO = park only).
+ * Returns the QSO count (0: nothing written), -1 on error. */
+int  qso_log_write_activation(const char *park, time_t day, const char *path);
 
 /**
  * Create qso log recort struct.

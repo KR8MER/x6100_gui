@@ -181,6 +181,7 @@ static ParamText *cfg_hamqth_user(void) { return param_ref<ParamText>(cfg_instan
 static ParamText *cfg_hamqth_pass(void) { return param_ref<ParamText>(cfg_instance().p_hamqth_pass); }
 static ParamText *cfg_qrz_key(void) { return param_ref<ParamText>(cfg_instance().p_qrz_key); }
 static ParamText *cfg_ntp_custom(void) { return param_ref<ParamText>(cfg_instance().p_ntp_custom); }
+static ParamText *cfg_pota_parks(void) { return param_ref<ParamText>(cfg_instance().p_pota_parks); }
 static ParamInt *cfg_wifi_enabled(void) { return param_ref<ParamInt>(cfg_instance().p_wifi_enabled); }
 static ParamInt *cfg_long_gen(void) { return param_ref<ParamInt>(cfg_instance().p_long_gen); }
 static ParamInt *cfg_long_app(void) { return param_ref<ParamInt>(cfg_instance().p_long_app); }
@@ -264,6 +265,7 @@ extern "C" const cfg_refs_t cfg = {
     .hamqth_pass = &cfg_hamqth_pass,
     .qrz_key = &cfg_qrz_key,
     .ntp_custom = &cfg_ntp_custom,
+    .pota_parks = &cfg_pota_parks,
 
     .ui = {
         .auto_level_enabled = &cfg_auto_level_enabled,

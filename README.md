@@ -17,8 +17,15 @@ changes the time the clock shows; the radio's own clock stays on UTC.
   in USB-D; RTTY opens the RTTY panel in LSB-D. Phone and CW bring their own
   button pages (Log, Messages, Recorder, Hunt and the controls for that mode).
 * **Log any QSO** (Log QSO button): band, frequency, mode and 59/599 come from
-  the radio. Same log as FT8. Export ADIF writes the whole log to
-  `qso_log.adi` on the DATA partition, with POTA references as `SIG`/`SIG_INFO`.
+  the radio. Same log as FT8. The whole log is kept as `qso_log.adi` on the
+  DATA partition (rewritten after every QSO), with POTA references as
+  `SIG`/`SIG_INFO`.
+* **POTA activating** (APP → page 5, Activate POTA): set your park (or an
+  n-fer) and every QSO, logged by hand or by FT8/FT4, carries it. The count
+  towards 10 shows after each QSO, dupes are marked, and pota.app upload files
+  (`pota/KR8MER@US-1234-20261018.adi`, one per park) are kept current. Spot
+  yourself on pota.app with one press (needs Wi-Fi), in the same form as
+  pota.app's own spot form. Park-to-park with a 2-fer logs one QSO per park.
 * **POTA hunter** (Hunt POTA button, needs Wi-Fi): live activator spots,
   filtered by band and mode, with NEW on parks not yet in your log and WKD on
   activators already logged at that park today. HUNT tunes, opens the right

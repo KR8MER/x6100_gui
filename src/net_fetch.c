@@ -44,7 +44,7 @@ static size_t write_cb(char *ptr, size_t size, size_t nmemb, void *user) {
     return n;
 }
 
-static bool request(const char *url, const char *form, net_result_t *res) {
+static bool request(const char *url, const char *form, const char *ctype, net_result_t *res) {
     char agent[sizeof(ua)];
 
     memset(res, 0, sizeof(*res));
@@ -66,18 +66,31 @@ static bool request(const char *url, const char *form, net_result_t *res) {
     curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 8L);
     curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
     curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L);
+    struct curl_slist *headers = NULL;
     if (form) {
         curl_easy_setopt(curl, CURLOPT_POSTFIELDS, form);
+    }
+    if (ctype) {
+        char h[96];
+        snprintf(h, sizeof(h), "Content-Type: %s", ctype);
+        headers = curl_slist_append(headers, h);
+        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
     }
 
     CURLcode rc = curl_easy_perform(curl);
     curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &res->http);
     curl_easy_cleanup(curl);
+    curl_slist_free_all(headers);
 
     if (rc != CURLE_OK) {
         snprintf(res->error, sizeof(res->error), "%s (Wi-Fi on?)", curl_easy_strerror(rc));
-    } else if (res->http != 200) {
-        snprintf(res->error, sizeof(res->error), "Server said %ld", res->http);
+    } else if (res->http < 200 || res->http > 299) {
+        /* the reply often says why (POTA: "Invalid park reference") */
+        if (res->body && res->body[0]) {
+            snprintf(res->error, sizeof(res->error), "Server said %ld: %.80s", res->http, res->body);
+        } else {
+            snprintf(res->error, sizeof(res->error), "Server said %ld", res->http);
+        }
     } else if (!res->body) {
         snprintf(res->error, sizeof(res->error), "Empty reply");
     } else {
@@ -90,11 +103,15 @@ static bool request(const char *url, const char *form, net_result_t *res) {
 }
 
 bool net_get(const char *url, net_result_t *res) {
-    return request(url, NULL, res);
+    return request(url, NULL, NULL, res);
 }
 
 bool net_post_form(const char *url, const char *form, net_result_t *res) {
-    return request(url, form ? form : "", res);
+    return request(url, form ? form : "", NULL, res);
+}
+
+bool net_post_json(const char *url, const char *json, net_result_t *res) {
+    return request(url, json ? json : "{}", "application/json", res);
 }
 
 void net_result_free(net_result_t *res) {

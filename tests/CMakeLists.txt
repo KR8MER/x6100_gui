@@ -44,6 +44,21 @@ target_compile_definitions(test_callbook PRIVATE _GNU_SOURCE)
 target_link_libraries(test_callbook PRIVATE Catch2::Catch2WithMain)
 add_test(NAME test_callbook COMMAND $<TARGET_FILE:test_callbook> --colour-mode=ansi)
 
+# POTA activating: references, spot body, park reply (parsers only, no network)
+add_executable(test_pota test_pota.cpp ${PROJECT_SOURCE_DIR}/src/pota_ref.c)
+target_compile_definitions(test_pota PRIVATE _GNU_SOURCE)
+target_link_libraries(test_pota PRIVATE Catch2::Catch2WithMain PkgConfig::JANSSON)
+add_test(NAME test_pota COMMAND $<TARGET_FILE:test_pota> --colour-mode=ansi)
+
+# ... and in the QSO log (SQLite in a file next to the test)
+add_executable(test_pota_log test_pota_log.cpp
+    ${PROJECT_SOURCE_DIR}/src/qso_log.c ${PROJECT_SOURCE_DIR}/src/adif.c
+    ${PROJECT_SOURCE_DIR}/src/hunt_target.c ${PROJECT_SOURCE_DIR}/src/util.cpp)
+target_compile_definitions(test_pota_log PRIVATE _GNU_SOURCE QSO_LOG_DB_PATH="test_pota_log.db")
+target_include_directories(test_pota_log PRIVATE ${PROJECT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/lvgl)
+target_link_libraries(test_pota_log PRIVATE aether_x6100_control Catch2::Catch2WithMain sqlite3)
+add_test(NAME test_pota_log COMMAND $<TARGET_FILE:test_pota_log> --colour-mode=ansi)
+
 add_subdirectory(../src/ft8 ${CMAKE_BINARY_DIR}/src/ft8)
 add_executable(test_ft8_qso test_ft8_qso.cpp)
 target_link_libraries(test_ft8_qso PRIVATE ft8_core QTH aether_x6100_control Catch2::Catch2WithMain)

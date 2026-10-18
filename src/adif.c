@@ -102,6 +102,18 @@ void adif_add_qso(adif_log l, qso_log_record_t qso)
         } else {
             write_str(l->fd, "SIG", qso.sig);
             write_str(l->fd, "SIG_INFO", qso.sig_info);
+            if (strcmp(qso.sig, "POTA") == 0) {
+                write_str(l->fd, "POTA_REF", qso.sig_info);
+            }
+        }
+    }
+    /* Own park(s) when activating: POTA reads MY_SIG_INFO (one park per
+     * upload file), other loggers MY_POTA_REF (a list is allowed) */
+    if (qso.my_sig[0] && qso.my_sig_info[0]) {
+        write_str(l->fd, "MY_SIG", qso.my_sig);
+        write_str(l->fd, "MY_SIG_INFO", qso.my_sig_info);
+        if (strcmp(qso.my_sig, "POTA") == 0) {
+            write_str(l->fd, "MY_POTA_REF", qso.my_sig_info);
         }
     }
     fprintf(l->fd, "<EOR>\r\n");
@@ -146,6 +158,7 @@ int adif_read(const char * path, qso_log_record_t ** records) {
 
     if (regcomp(&regex, re, REG_NEWLINE | REG_EXTENDED)) {
         printf("Can't compile regexp");
+        fclose(fp);
         return -2;
     }
 
@@ -158,7 +171,7 @@ int adif_read(const char * path, qso_log_record_t ** records) {
     size_t val_len;
 
     while ((read = getline(&line, &len, fp)) != -1) {
-        if (strcmp(line + read - 7, "<EOR>\r\n") != 0) continue;
+        if (read < 7 || strcmp(line + read - 7, "<EOR>\r\n") != 0) continue;
         s = line;
         cur_record = &(*records)[cur_record_id];
         memset(cur_record, 0, sizeof(*cur_record));
@@ -202,6 +215,16 @@ int adif_read(const char * path, qso_log_record_t ** records) {
                     COPY_STR(cur_record->sig, s + pmatch[0].rm_eo, val_len);
                 } else if (key_is(s, pmatch, "SIG_INFO")) {
                     COPY_STR(cur_record->sig_info, s + pmatch[0].rm_eo, val_len);
+                } else if (key_is(s, pmatch, "MY_SIG")) {
+                    COPY_STR(cur_record->my_sig, s + pmatch[0].rm_eo, val_len);
+                } else if (key_is(s, pmatch, "MY_SIG_INFO")) {
+                    COPY_STR(cur_record->my_sig_info, s + pmatch[0].rm_eo, val_len);
+                } else if (key_is(s, pmatch, "MY_POTA_REF") && !cur_record->my_sig_info[0]) {
+                    strcpy(cur_record->my_sig, "POTA");
+                    COPY_STR(cur_record->my_sig_info, s + pmatch[0].rm_eo, val_len);
+                } else if (key_is(s, pmatch, "POTA_REF") && !cur_record->sig_info[0]) {
+                    strcpy(cur_record->sig, "POTA");
+                    COPY_STR(cur_record->sig_info, s + pmatch[0].rm_eo, val_len);
                 } else if (key_is(s, pmatch, "SOTA_REF")) {
                     strcpy(cur_record->sig, "SOTA");
                     COPY_STR(cur_record->sig_info, s + pmatch[0].rm_eo, val_len);
@@ -225,13 +248,16 @@ int adif_read(const char * path, qso_log_record_t ** records) {
             (*records) = realloc((*records), arr_size * sizeof(qso_log_record_t));
         }
     }
-    return cur_record_id--;
+    free(line);
+    fclose(fp);
+    regfree(&regex);
+    return cur_record_id;
 }
 
 static void write_header(FILE *fd) {
     fprintf(fd, "<PROGRAMID:5>X6100\r\n");
     fprintf(fd, "<PROGRAMVERSION:%zu>%s\r\n", strlen(VERSION), VERSION);
-    fprintf(fd, "<ADIF_VER:4>3.14\r\n");
+    fprintf(fd, "<ADIF_VER:5>3.1.4\r\n");
     fprintf(fd, "<EOH>\r\n");
 }
 

@@ -62,6 +62,7 @@
 #include "dialog_hunter.h"
 #include "dialog_cluster.h"
 #include "dialog_spacewx.h"
+#include "dialog_activate.h"
 
 #include <unistd.h>
 #include <stdint.h>
@@ -315,6 +316,12 @@ void main_screen_action(press_action_t action) {
             apps_disable();
             dialog_construct(dialog_spacewx, obj);
             voice_say_text_fmt("Space weather window");
+            break;
+
+        case ACTION_APP_ACTIVATE:
+            apps_disable();
+            dialog_construct(dialog_activate, obj);
+            voice_say_text_fmt("POTA activation window");
             break;
 
         case ACTION_COCKPIT_PHONE:

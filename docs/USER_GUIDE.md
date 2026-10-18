@@ -13,7 +13,7 @@ Contents:
 4. [Themes](#4-themes)
 5. [Cockpits](#5-cockpits)
 6. [Logging QSOs](#6-logging-qsos)
-7. [POTA hunting](#7-pota-hunting)
+7. [POTA hunting and activating](#7-pota-hunting-and-activating)
 8. [DX cluster](#8-dx-cluster)
 9. [Space weather](#9-space-weather)
 10. [Clock and time zones](#10-clock-and-time-zones)
@@ -171,7 +171,7 @@ computer.
 You can also set the callsign, grid, HamQTH login, QRZ key and time server
 from a phone or computer: see [The radio's web page](#16-the-radios-web-page).
 
-## 7. POTA hunting
+## 7. POTA hunting and activating
 
 **Hunt POTA** (APP → page 4, or the cockpit buttons) lists the stations
 activating parks right now, from the POTA spot feed at pota.app. It needs
@@ -211,6 +211,49 @@ hunter window is open or while alerts are off. It needs Wi-Fi.
 
 **SOTA** is not included: the SOTA API's terms require approval before
 software written with AI assistance may use it.
+
+**Park-to-park with a 2-fer.** If the other activator is in two parks, type
+both in **Log QSO → Park / Summit** as `US-1111,US-2222`. The radio logs one
+QSO per park, the same except for the park, which is how POTA credits each
+one. Typing a single park shows its name from pota.app (needs Wi-Fi).
+
+### Activating a park
+
+**Activate POTA** (APP → page 5) is for when you are the one in the park.
+
+| Button | Does |
+|---|---|
+| **My Parks** | Your park, e.g. `US-1234`, or parks for an n-fer: `US-1234,US-5678` (up to 4). Empty ends the activation. |
+| **Spot Me** | Spots you on pota.app at your first park, on the frequency and mode you are on, with your comment (`CQ POTA` if none). For an n-fer the comment names the other parks. Needs Wi-Fi. |
+| **Spot Comment** | What your spot says. Put `QRT` in it when you are done and the spot shows as ended. |
+| **End** | Ends the activation, writes the upload files a last time and says whether it was valid. |
+
+While a park is set:
+
+- Every QSO you log, with **Log QSO** or by FT8/FT4, carries your park(s)
+  (`MY_SIG` / `MY_SIG_INFO`). The message after each one says how far you are,
+  e.g. *"US-1234: 7/10"*, and *"a valid activation!"* at 10.
+- The Log QSO header shows the park and count, and a call you have already
+  worked today on that band and mode group (CW, phone or data) is marked
+  **DUPE**. You can still log it; dupes are not counted.
+- The window shows the count for each park, the park names, your QSOs per band
+  and mode group, the upload file and your last spot. If you change frequency
+  after spotting, it reminds you to re-spot. The radio never spots you by
+  itself.
+- The **upload files** are kept current in the `pota` folder on the DATA
+  partition, one per park, named the way pota.app expects:
+  `KR8MER@US-1234-20261018.adi` (a `/` in your call becomes `_`). Each holds
+  that UTC day's QSOs at that park. Download them from the radio's web page
+  (File browser → pota) or the SD card, and upload them at pota.app.
+
+Counts follow the UTC day, as POTA does: an activation that runs past 0000 UTC
+gets a new file and a new count for the new day.
+
+The spot is sent exactly as pota.app's own spot form sends it, and the radio
+checks your callsign, park, band and mode the same way first. The same spot is
+not sent again within 2 minutes. pota.app has no published rules for spotting
+from other programs. This one spots only you, only when you press Spot Me, and
+names itself (`X6100-KR8MER`) on the spot.
 
 ## 8. DX cluster
 
@@ -340,6 +383,7 @@ The `DATA` partition on the SD card can be read and written from a computer.
 | `qso_log.adi` | Your whole log in ADIF, rewritten after every QSO (and by **Log QSO → Export ADIF**). |
 | `ft_log.adi` | FT8/FT4 QSOs, written as they are made (as in the original GUI). |
 | `incoming_log.adi` | Copy an ADIF log here under this name to import it at the next boot (it is then renamed `incoming_log.adi.bak`). Imported QSOs mark worked call signs and parks. |
+| `pota/` | POTA upload files, one per park and UTC day: `KR8MER@US-1234-20261018.adi`. |
 | `ntp_server` | The time server you chose (written by the radio). |
 | `atu_log.csv` | One line per tune: time, antenna, frequency and the tuner's setting. |
 | `params.db` | The radio's settings, including any HamQTH password and QRZ key. |

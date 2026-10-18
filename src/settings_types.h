@@ -55,6 +55,7 @@ typedef enum {
     ACTION_MESSAGES = 126,      // the CW or voice message keyer for the mode
     ACTION_APP_CLUSTER = 127,   // DX cluster spots
     ACTION_APP_SPACEWX = 128,   // space weather: solar flux, K index
+    ACTION_APP_ACTIVATE = 129,  // POTA activation: my parks, count, self-spot
 } press_action_t;
 
 typedef enum {

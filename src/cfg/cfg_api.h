@@ -442,6 +442,7 @@ typedef struct {
     ParamText *(*hamqth_pass)(void); /* p_hamqth_pass */
     ParamText *(*qrz_key)(void); /* p_qrz_key */
     ParamText *(*ntp_custom)(void); /* p_ntp_custom */
+    ParamText *(*pota_parks)(void); /* p_pota_parks */
 
 
     cfg_ui_refs_t ui;

@@ -177,9 +177,10 @@ int qso_log_record_save(qso_log_record_t qso) {
     rc = sqlite3_prepare_v2(
         db, "INSERT OR IGNORE INTO qso_log ("
                 "ts, freq, band, mode, local_callsign, remote_callsign, rsts, rstr, "
-                "local_grid, remote_grid, op_name, canonized_remote_callsign, sig, sig_info"
+                "local_grid, remote_grid, op_name, canonized_remote_callsign, sig, sig_info, my_sig, my_sig_info"
             ") VALUES (datetime(:ts, 'unixepoch'), :freq, :band, :mode, :local_callsign, :remote_callsign, "
-                ":rsts, :rstr, :local_grid, :remote_grid, :op_name, :canonized_remote_callsign, :sig, :sig_info)",
+                ":rsts, :rstr, :local_grid, :remote_grid, :op_name, :canonized_remote_callsign, :sig, :sig_info, "
+                ":my_sig, :my_sig_info)",
                        -1, &stmt, 0);
     if (rc != SQLITE_OK) {
         LV_LOG_ERROR("Error in prepairing query");
@@ -216,6 +217,11 @@ int qso_log_record_save(qso_log_record_t qso) {
     if (rc != SQLITE_OK) goto fail;
     rc = bind_optional_text(stmt, sqlite3_bind_parameter_index(stmt, ":sig_info"), qso.sig_info[0] ? qso.sig_info : NULL);
     if (rc != SQLITE_OK) goto fail;
+    rc = bind_optional_text(stmt, sqlite3_bind_parameter_index(stmt, ":my_sig"), qso.my_sig[0] ? qso.my_sig : NULL);
+    if (rc != SQLITE_OK) goto fail;
+    rc = bind_optional_text(stmt, sqlite3_bind_parameter_index(stmt, ":my_sig_info"),
+                            qso.my_sig_info[0] ? qso.my_sig_info : NULL);
+    if (rc != SQLITE_OK) goto fail;
 
     char * canonized_remote_callsign = util_canonize_callsign(qso.remote_call, true);
 
@@ -226,14 +232,18 @@ int qso_log_record_save(qso_log_record_t qso) {
     }
 
     if(sqlite3_step(stmt) != SQLITE_DONE) {
-        printf("Error during execute: `%s`\n", sqlite3_expanded_sql(stmt));
+        char *sql = sqlite3_expanded_sql(stmt);
+        printf("Error during execute: `%s`\n", sql ? sql : "?");
+        sqlite3_free(sql);
         free(canonized_remote_callsign);
         goto fail;
     }
 
     int changed = sqlite3_changes(db);
     if (changed == 0) {
-        printf("Not inserted `%s`\n", sqlite3_expanded_sql(stmt));
+        char *sql = sqlite3_expanded_sql(stmt);
+        printf("Not inserted `%s`\n", sql ? sql : "?");
+        sqlite3_free(sql);
     }
 
     free(canonized_remote_callsign);
@@ -300,8 +310,11 @@ static void * import_adif_thread(void* args) {
 
     pthread_detach(pthread_self());
 
-    qso_log_record_t * records;
+    qso_log_record_t * records = NULL;
     int cnt = adif_read(path, &records);
+    if (cnt < 0) {
+        cnt = 0;   // unreadable: nothing to import
+    }
     char * canonized;
     size_t updated_rows = 0;
     size_t c = 0;
@@ -367,15 +380,17 @@ static void read_row(sqlite3_stmt *stmt, qso_log_record_t *r) {
     copy_col(r->name, sizeof(r->name), stmt, 10);
     copy_col(r->sig, sizeof(r->sig), stmt, 11);
     copy_col(r->sig_info, sizeof(r->sig_info), stmt, 12);
+    copy_col(r->my_sig, sizeof(r->my_sig), stmt, 13);
+    copy_col(r->my_sig_info, sizeof(r->my_sig_info), stmt, 14);
 }
 
 #define ROW_COLUMNS \
     "strftime('%s', ts), freq, band, mode, local_callsign, remote_callsign, rsts, rstr, " \
-    "local_grid, remote_grid, op_name, sig, sig_info"
+    "local_grid, remote_grid, op_name, sig, sig_info, my_sig, my_sig_info"
 #define SELECT_ROWS     "SELECT " ROW_COLUMNS " FROM qso_log "
 /* the same, with the row id as column ROWID_COL for the QRZ upload */
 #define SELECT_ROWS_ID  "SELECT " ROW_COLUMNS ", rowid FROM qso_log "
-#define ROWID_COL       13
+#define ROWID_COL       15
 
 int qso_log_recent(qso_log_record_t *out, int max) {
     sqlite3_stmt *stmt;
@@ -429,6 +444,139 @@ bool qso_log_worked_at_ref_today(const char *call, const char *ref, time_t now) 
     sqlite3_finalize(stmt);
     free(canon);
     return found;
+}
+
+/* ---- POTA activation ---- */
+
+/* The QSO was made at `park` (one of the comma-separated MY_SIG_INFO
+ * references) on the UTC day of the bound time */
+#define ACT_WHERE \
+    "WHERE instr(',' || UPPER(REPLACE(IFNULL(my_sig_info, ''), ' ', '')) || ',', ',' || UPPER(?1) || ',') > 0 " \
+    "AND date(ts) = date(?2, 'unixepoch') "
+/* POTA's mode groups: a call is a dupe on the same band in the same group */
+#define ACT_GROUP "CASE WHEN mode IN (1, 2, 3) THEN 1 WHEN mode = 4 THEN 0 ELSE 2 END"
+
+qso_log_mode_group_t qso_log_mode_group(qso_log_mode_t mode) {
+    switch (mode) {
+        case MODE_SSB:
+        case MODE_AM:
+        case MODE_FM:
+            return MODE_GROUP_PHONE;
+        case MODE_CW:
+            return MODE_GROUP_CW;
+        default:
+            return MODE_GROUP_DATA;
+    }
+}
+
+static bool act_bind(sqlite3_stmt *stmt, const char *park, time_t day) {
+    return sqlite3_bind_text(stmt, 1, park, -1, SQLITE_TRANSIENT) == SQLITE_OK &&
+           sqlite3_bind_int64(stmt, 2, (sqlite3_int64)day) == SQLITE_OK;
+}
+
+int qso_log_activation_count(const char *park, time_t day) {
+    sqlite3_stmt *stmt;
+    int           n = -1;
+
+    if (!db || !park || !park[0] ||
+        sqlite3_prepare_v2(db,
+                           "SELECT COUNT(*) FROM (SELECT DISTINCT canonized_remote_callsign, band, " ACT_GROUP
+                           " FROM qso_log " ACT_WHERE ")",
+                           -1, &stmt, NULL) != SQLITE_OK) {
+        return -1;
+    }
+    if (act_bind(stmt, park, day) && sqlite3_step(stmt) == SQLITE_ROW) {
+        n = sqlite3_column_int(stmt, 0);
+    }
+    sqlite3_finalize(stmt);
+    return n;
+}
+
+bool qso_log_activation_dupe(const char *call, qso_log_band_t band, qso_log_mode_t mode, const char *park,
+                             time_t day) {
+    sqlite3_stmt *stmt;
+    bool          dupe  = false;
+    char         *canon = util_canonize_callsign(call, true);
+
+    if (!canon) {
+        return false;
+    }
+    if (db && park && park[0] &&
+        sqlite3_prepare_v2(db,
+                           "SELECT 1 FROM qso_log " ACT_WHERE
+                           "AND canonized_remote_callsign = ?3 COLLATE NOCASE AND band = ?4 AND " ACT_GROUP
+                           " = ?5 LIMIT 1",
+                           -1, &stmt, NULL) == SQLITE_OK) {
+        if (act_bind(stmt, park, day) && sqlite3_bind_text(stmt, 3, canon, -1, SQLITE_TRANSIENT) == SQLITE_OK &&
+            sqlite3_bind_int(stmt, 4, band) == SQLITE_OK &&
+            sqlite3_bind_int(stmt, 5, qso_log_mode_group(mode)) == SQLITE_OK) {
+            dupe = sqlite3_step(stmt) == SQLITE_ROW;
+        }
+        sqlite3_finalize(stmt);
+    }
+    free(canon);
+    return dupe;
+}
+
+int qso_log_activation_summary(const char *park, time_t day, qso_log_band_count_t *out, int max) {
+    sqlite3_stmt *stmt;
+    int           n = 0;
+
+    if (!db || !park || !park[0] || max <= 0 ||
+        sqlite3_prepare_v2(db,
+                           "SELECT band, grp, COUNT(*) FROM (SELECT DISTINCT canonized_remote_callsign, band, "
+                           ACT_GROUP " AS grp FROM qso_log " ACT_WHERE ") GROUP BY band, grp ORDER BY band DESC, grp",
+                           -1, &stmt, NULL) != SQLITE_OK) {
+        return -1;
+    }
+    if (act_bind(stmt, park, day)) {
+        while (n < max && sqlite3_step(stmt) == SQLITE_ROW) {
+            out[n].band  = sqlite3_column_int(stmt, 0);
+            out[n].group = sqlite3_column_int(stmt, 1);
+            out[n].count = sqlite3_column_int(stmt, 2);
+            n++;
+        }
+    }
+    sqlite3_finalize(stmt);
+    return n;
+}
+
+int qso_log_write_activation(const char *park, time_t day, const char *path) {
+    sqlite3_stmt *stmt;
+    int           n = 0;
+    char          tmp[256];
+
+    if (!db || !park || !park[0] || snprintf(tmp, sizeof(tmp), "%s.tmp", path) >= (int)sizeof(tmp) ||
+        sqlite3_prepare_v2(db, SELECT_ROWS ACT_WHERE "ORDER BY ts", -1, &stmt, NULL) != SQLITE_OK) {
+        return -1;
+    }
+    if (!act_bind(stmt, park, day)) {
+        sqlite3_finalize(stmt);
+        return -1;
+    }
+    unlink(tmp);
+    adif_log l = adif_log_init(tmp);
+    if (!l) {
+        sqlite3_finalize(stmt);
+        return -1;
+    }
+    while (sqlite3_step(stmt) == SQLITE_ROW) {
+        qso_log_record_t r;
+        read_row(stmt, &r);
+        /* POTA takes one park per file: this one */
+        snprintf(r.my_sig, sizeof(r.my_sig), "POTA");
+        snprintf(r.my_sig_info, sizeof(r.my_sig_info), "%s", park);
+        adif_add_qso(l, r);
+        n++;
+    }
+    adif_log_close(l);
+    free(l);
+    sqlite3_finalize(stmt);
+    if (n == 0 || rename(tmp, path) != 0) {
+        unlink(tmp);
+        return n == 0 ? 0 : -1;
+    }
+    return n;
 }
 
 int qso_log_qrz_unsent(qso_log_row_t *out, int max) {
@@ -596,6 +744,8 @@ static bool create_tables() {
         {"sig", "TEXT"},
         {"sig_info", "TEXT"},
         {"qrz_sent", "INTEGER NOT NULL DEFAULT 0"},
+        {"my_sig", "TEXT"},
+        {"my_sig_info", "TEXT"},
     };
     for (size_t i = 0; i < sizeof(added) / sizeof(added[0]); i++) {
         if (!has_column("qso_log", added[i].name)) {
@@ -632,8 +782,13 @@ static bool create_tables() {
         return false;
     }
 
+    /* One QSO per time and call, except one entry per park when the other
+     * station is in two or more (POTA logs a 2-fer P2P as two entries that
+     * differ only in SIG_INFO). The older index was on time and call. */
     rc = sqlite3_exec(db,
-        "CREATE UNIQUE INDEX IF NOT EXISTS qso_log_idx_ts_call ON qso_log(ts, remote_callsign)",
+        "DROP INDEX IF EXISTS qso_log_idx_ts_call; "
+        "CREATE UNIQUE INDEX IF NOT EXISTS qso_log_idx_ts_call_ref "
+        "ON qso_log(ts, remote_callsign, IFNULL(sig_info, ''))",
         NULL, NULL, &err);
     if (rc != SQLITE_OK) {
         LV_LOG_ERROR(err);

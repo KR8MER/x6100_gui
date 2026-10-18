@@ -92,6 +92,7 @@ static action_items_t long_action_items[] = {
     {.label = " POTA hunter",      .action = ACTION_APP_HUNTER   },
     {.label = " DX cluster",       .action = ACTION_APP_CLUSTER  },
     {.label = " Space weather",    .action = ACTION_APP_SPACEWX  },
+    {.label = " Activate POTA",    .action = ACTION_APP_ACTIVATE },
     {.label = NULL,                .action = ACTION_NONE        }
 };
 

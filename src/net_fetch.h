@@ -28,6 +28,8 @@ typedef struct {
 /* Blocking GET / form POST (worker thread only). True on HTTP 200. */
 bool net_get(const char *url, net_result_t *res);
 bool net_post_form(const char *url, const char *form, net_result_t *res);
+/* POST a JSON body (Content-Type: application/json) */
+bool net_post_json(const char *url, const char *json, net_result_t *res);
 void net_result_free(net_result_t *res);
 
 /* Run work(ctx) on a new thread, then done(ctx) on the LVGL thread.

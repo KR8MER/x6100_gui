@@ -403,6 +403,9 @@ class SettingsManager {
         StorageType::GLOBAL, pending_writes_, {}, &global_params_};
     Parameter<std::string> p_ntp_custom{"ntp_custom", "", {},
         StorageType::GLOBAL, pending_writes_, {}, &global_params_};
+    // POTA activation: own park(s) being activated, "" when not activating
+    Parameter<std::string> p_pota_parks{"pota_parks", "", {},
+        StorageType::GLOBAL, pending_writes_, {}, &global_params_};
 
     // Network
     Parameter<int32_t> p_wifi_enabled{"wifi_enabled", false, 0, 1,

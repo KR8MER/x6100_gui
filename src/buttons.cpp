@@ -453,6 +453,7 @@ static button_data_t btn_hunt     = make_action_btn("Hunt\nPOTA", ACTION_APP_HUN
 static button_data_t btn_msgs     = make_action_btn("Messages", ACTION_MESSAGES);
 static button_data_t btn_cluster  = make_action_btn("DX\nCluster", ACTION_APP_CLUSTER);
 static button_data_t btn_spacewx  = make_action_btn("Space\nWeather", ACTION_APP_SPACEWX);
+static button_data_t btn_activate = make_action_btn("Activate\nPOTA", ACTION_APP_ACTIVATE);
 
 /* App pages */
 static button_data_t btn_app_p0 = make_page_btn("(APP 1:5)", "Cockpits");
@@ -474,7 +475,7 @@ static buttons_page_t page_app_3 = {
     {&btn_app_p3, &btn_wifi, &btn_bt, &btn_log, &btn_hunt}
 };
 static buttons_page_t page_app_4 = {
-    {&btn_app_p4, &btn_cluster, &btn_spacewx}
+    {&btn_app_p4, &btn_cluster, &btn_spacewx, &btn_activate}
 };
 
 /* Phone cockpit */

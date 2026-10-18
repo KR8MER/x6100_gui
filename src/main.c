@@ -24,6 +24,7 @@
 #include "splash.h"
 #include "time_server.h"
 #include "pota_watch.h"
+#include "pota_activation.h"
 #include "radio.h"
 #include "dsp.h"
 #include "util.h"
@@ -181,6 +182,7 @@ int main(void) {
     }
     qso_log_import_adif("/mnt/incoming_log.adi");
     pota_watch_init();
+    pota_activation_init();
 
     int rc = pthread_create(&tick_pthread, NULL, tick_thread, NULL);
 
