@@ -20,6 +20,10 @@ changes the time the clock shows; the radio's own clock stays on UTC.
   the radio. Same log as FT8. The whole log is kept as `qso_log.adi` on the
   DATA partition (rewritten after every QSO), with POTA references as
   `SIG`/`SIG_INFO`.
+* **Log on the web** (the radio's web page, Log): search, see every QSO with a
+  station, fix or delete QSOs, download the log or any POTA upload file, and
+  send QSOs to your QRZ Logbook. Log QSO on the radio says when you have
+  worked a call before.
 * **POTA activating** (APP → page 5, Activate POTA): set your park (or an
   n-fer) and every QSO, logged by hand or by FT8/FT4, carries it. The count
   towards 10 shows after each QSO, dupes are marked, and pota.app upload files

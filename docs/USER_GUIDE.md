@@ -151,6 +151,11 @@ it is the entry being made, and below that your most recent QSOs.
 
 Saving the same call at the same time twice logs it once.
 
+**Worked before?** When you enter a call, a message says how many times you
+have worked that station and when last, e.g. *"W1AW: worked 3 times, last
+2026-10-12 20m SSB"*, or *"first QSO"*. The radio's web page (Log) shows the
+whole history.
+
 Typing in these windows: turn the knob to move across the on-screen keys and
 press it to type the highlighted key (a USB keyboard works too).
 
@@ -440,6 +445,7 @@ the same network (the address is in Wi-Fi settings on the radio).
 | Page | Does |
 |---|---|
 | **Station** | Callsign, grid square, HamQTH user name and password, QRZ Logbook API key and the time server. Saved passwords and keys are never shown, only whether one is set; leave the box empty to keep it. |
+| **Log** | Your QSOs, newest first. Search by call, park or name, or pick a UTC day. Typing a whole call shows every QSO you have had with that station (however the call was written: `W1AW` and `W1AW/P` are the same station). **Edit** fixes a QSO or deletes it; `qso_log.adi` and the POTA upload files are rewritten after. Download the whole log, or the POTA upload file of any activation. **Upload to QRZ** sends the QSOs not yet on your QRZ Logbook, 50 per press (needs the radio online and your QRZ key). |
 | **Bands**, **Digital modes** | Band edges and FT8/FT4 frequencies. |
 | **File browser** | Download files from the DATA partition: `qso_log.adi`, `ft_log.adi`, screenshots, recordings. |
 | **Time Editor** | Set the clock and time zone. |

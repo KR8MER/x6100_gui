@@ -106,6 +106,10 @@ bool qso_log_find(time_t ts, const char *remote_call, qso_log_row_t *out);
 /* Uploaded to QRZ (or QRZ already had it) */
 bool qso_log_mark_qrz_sent(int64_t id);
 
+/* QSOs with this station however its call was written (W1AW, W1AW/P);
+ * the latest goes to *last when there is one. -1 on error. */
+int qso_log_history(const char *call, qso_log_record_t *last);
+
 /* True when a QSO with this POTA/SOTA reference is already in the log */
 bool qso_log_has_ref(const char *ref);
 

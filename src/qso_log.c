@@ -407,6 +407,34 @@ int qso_log_recent(qso_log_record_t *out, int max) {
     return n;
 }
 
+int qso_log_history(const char *call, qso_log_record_t *last) {
+    sqlite3_stmt *stmt;
+    int           n     = -1;
+    char         *canon = util_canonize_callsign(call, true);
+
+    if (!canon) {
+        return -1;
+    }
+    if (db && sqlite3_prepare_v2(db,
+                                 "SELECT " ROW_COLUMNS ", (SELECT COUNT(*) FROM qso_log "
+                                 "WHERE canonized_remote_callsign = ?1 COLLATE NOCASE) FROM qso_log "
+                                 "WHERE canonized_remote_callsign = ?1 COLLATE NOCASE ORDER BY ts DESC LIMIT 1",
+                                 -1, &stmt, NULL) == SQLITE_OK) {
+        if (sqlite3_bind_text(stmt, 1, canon, -1, SQLITE_TRANSIENT) == SQLITE_OK) {
+            int rc = sqlite3_step(stmt);
+            if (rc == SQLITE_ROW) {
+                if (last) read_row(stmt, last);
+                n = sqlite3_column_int(stmt, ROWID_COL);   // the count follows the row columns
+            } else if (rc == SQLITE_DONE) {
+                n = 0;
+            }
+        }
+        sqlite3_finalize(stmt);
+    }
+    free(canon);
+    return n;
+}
+
 bool qso_log_has_ref(const char *ref) {
     sqlite3_stmt *stmt;
     bool          found = false;

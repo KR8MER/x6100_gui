@@ -248,6 +248,23 @@ static void open_text_window(textarea_window_cb_t ok, textarea_window_cb_t cance
 
 static void start_lookup(bool asked);
 
+/* Worked before? Every QSO with this station, however the call was written */
+static void show_history(const char *call) {
+    qso_log_record_t last;
+    int              n = qso_log_history(call, &last);
+    char             buf[sizeof(entry.call)];
+
+    if (n == 0) {
+        msg_update_text_fmt("%s: first QSO", no_recolor(call, buf, sizeof(buf)));
+    } else if (n > 0) {
+        struct tm t;
+        gmtime_r(&last.time, &t);
+        msg_update_text_fmt("%s: worked %i time%s, last %04i-%02i-%02i %im %s", no_recolor(call, buf, sizeof(buf)),
+                            n, n > 1 ? "s" : "", t.tm_year + 1900, t.tm_mon + 1, t.tm_mday, (int)last.band,
+                            log_mode_name(last.mode));
+    }
+}
+
 /* The park's name, from pota.app, as a message */
 static void park_found(const char *ref, bool ok) {
     if (ok && dialog.run) {
@@ -289,6 +306,7 @@ static bool edit_ok(void) {
         lv_label_set_text(info, "");
         if (entry.call[0]) {
             start_lookup(false);
+            show_history(entry.call);
         }
     }
     if (editing == entry.ref && log_sig_for_ref(entry.ref)[0] && strcmp(log_sig_for_ref(entry.ref), "POTA") == 0) {

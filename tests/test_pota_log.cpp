@@ -175,3 +175,14 @@ TEST_CASE("QRZ gets a 2-fer P2P once", "[pota]") {
     CHECK(n0p == 1);
     CHECK(qso_log_qrz_unsent_count() == 9);   // both N0P rows are now sent
 }
+
+TEST_CASE("Worked-before history, however the call was written", "[log]") {
+    make_log();
+    qso_log_record_t last;
+    CHECK(qso_log_history("W1AW", &last) == 4);
+    CHECK(std::string(last.remote_call) == "W1AW");      // the latest: 40m SSB
+    CHECK(last.band == BAND_40M);
+    CHECK(qso_log_history("W1AW/QRP", nullptr) == 4);    // portable forms are the same station
+    CHECK(qso_log_history("N0P", &last) == 2);           // the 2-fer P2P is two entries
+    CHECK(qso_log_history("ZZ9ZZZ", &last) == 0);
+}
